@@ -1,7 +1,7 @@
 # %% Set Up
 
 # %%%Import standard modules
-# import os
+import os
 import uvicorn
 # import json
 # import pandas as pd
@@ -76,6 +76,6 @@ def home():
 
 # %% Run app
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, log_level="info")
+    uvicorn.run("main:app", host="0.0.0.0", port=os.getenv("PORT", default=5000), log_level="info")
 
     # uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True, log_level="info")
