@@ -29,19 +29,19 @@ service_account_info = json.loads(env_vars.get('GOOGLE_SHEETS_API_SERVICE_ACCOUN
 
 app = FastAPI()
 
-origins = [
-    "http://localhost:3000",
-    "localhost:3000",
-    "*" # allow all origins (not particularly safe)
-]
+# origins = [
+#     "http://localhost:3000",
+#     "localhost:3000",
+#     "*" # allow all origins (not particularly safe)
+# ]
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"]
-)
+# app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=origins,
+#     allow_credentials=True,
+#     allow_methods=["*"],
+#     allow_headers=["*"]
+# )
 
 # %% Define routes
 
