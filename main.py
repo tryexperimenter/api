@@ -7,13 +7,12 @@ import json
 import pandas as pd
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from dotenv import dotenv_values
+from dotenv import dotenv_values # pip install python-dotenv
 
-# # %%% Import custom modules
-# from config import settings # Environment variables (https://itsjoshcampos.codes/fast-api-environment-variables)
+# %%% Import custom modules
 from google_sheets_functions import read_data_from_google_sheet
 
-# # %%% Load environment variables
+# %%% Load environment variables
 
 ## Load variables from .env file or OS environment variables
 env_vars = {
@@ -76,4 +75,4 @@ async def get_log(row: int) -> dict:
 
 # %% Run app
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=os.getenv("PORT", default=5000), log_level="info")
+    uvicorn.run("main:app", host="0.0.0.0", port=os.getenv("PORT", default=5000), log_level="info", reload=True)
