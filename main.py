@@ -73,13 +73,33 @@ async def get_log(row: int) -> dict:
 
     return { "data": df.iloc[row].to_dict()}
 
+@app.get("/api/v1/experiment-observations/")
+async def get_log(id: str) -> dict:
+
+    # Set data source
+    sheet_id = "10Lt6tlYRfFSg5KBmF-xCOvdh6shfa1yuvgD2J5z6rbU"
+    sheet_range = "ExperimentObservations!A1:C234"
+
+    # Read data from Google Sheets
+    data = read_data_from_google_sheet(
+        service_account_info=service_account_info, 
+        sheet_id = sheet_id, 
+        sheet_range = sheet_range)
+
+    # Convert to dataframe
+    df = pd.DataFrame(
+        data=data[1:], 
+        columns=data[0])
+
+    return { "data": df[df['id']==id].to_dict('list')}
+
 # %% Run app
 if __name__ == "__main__":
     
     # Development (reload on code changes)
-    # uvicorn.run("main:app", reload=True, host="0.0.0.0", port=os.getenv("PORT", default=5000), log_level="info")
+    uvicorn.run("main:app", reload=True, host="0.0.0.0", port=os.getenv("PORT", default=5000), log_level="info")
 
     # Production
-    uvicorn.run("main:app", host="0.0.0.0", port=os.getenv("PORT", default=5000), log_level="info")
+    # uvicorn.run("main:app", host="0.0.0.0", port=os.getenv("PORT", default=5000), log_level="info")
 
     
