@@ -53,7 +53,7 @@ async def get_log(id: int) -> dict:
 
     return { "message": "The user id is: " + str(id)}
 
-@app.get("/google_sheets/")
+@app.get("/google-sheets/")
 async def get_log(row: int) -> dict:
 
     # Set data source
@@ -75,4 +75,11 @@ async def get_log(row: int) -> dict:
 
 # %% Run app
 if __name__ == "__main__":
+    
+    # Development (reload on code changes)
+    # uvicorn.run("main:app", reload=True, host="0.0.0.0", port=os.getenv("PORT", default=5000), log_level="info")
+
+    # Production
     uvicorn.run("main:app", host="0.0.0.0", port=os.getenv("PORT", default=5000), log_level="info")
+
+    
