@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import dotenv_values # pip install python-dotenv
 
 # %%% Import custom modules
-from google_sheets_functions import read_data_from_google_sheet
+from google_sheets_functions import create_google_sheets_service, read_data_from_google_sheet
 
 # %%% Load environment variables
 
@@ -22,7 +22,10 @@ env_vars = {
 
 ## Assign environment variables to local variables
 # Convert string environment variables to JSON
-service_account_info = json.loads(env_vars.get('GOOGLE_SHEETS_API_SERVICE_ACCOUNT'))
+google_sheets_service_account_info = json.loads(env_vars.get('GOOGLE_SHEETS_API_SERVICE_ACCOUNT'))
+
+## Create service accounts
+google_sheets_service = create_google_sheets_service(service_account_info = google_sheets_service_account_info)
 
 # %% Set up FastAPI
 
@@ -62,7 +65,7 @@ async def get_log(row: int) -> dict:
 
     # Read data from Google Sheets
     data = read_data_from_google_sheet(
-        service_account_info=service_account_info, 
+        google_sheets_service=google_sheets_service, 
         sheet_id = sheet_id, 
         sheet_range = sheet_range)
 
@@ -82,7 +85,7 @@ async def get_log(id: str) -> dict:
 
     # Read data from Google Sheets
     data = read_data_from_google_sheet(
-        service_account_info=service_account_info, 
+        google_sheets_service=google_sheets_service, 
         sheet_id = sheet_id, 
         sheet_range = sheet_range)
 
