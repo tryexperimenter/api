@@ -77,24 +77,38 @@ async def get_log(row: int) -> dict:
     return { "data": df.iloc[row].to_dict()}
 
 @app.get("/api/v1/experiment-observations/")
-async def get_log(id: str) -> dict:
+async def get_log(user_id: str) -> dict:
 
-    # Set data source
+    user_id = 'AAA'
+
+    # Pull user data
     sheet_id = "10Lt6tlYRfFSg5KBmF-xCOvdh6shfa1yuvgD2J5z6rbU"
-    sheet_range = "ExperimentObservations!A1:C234"
-
-    # Read data from Google Sheets
+    sheet_range = "Users!A1:D234"
     data = read_data_from_google_sheet(
         google_sheets_service=google_sheets_service, 
         sheet_id = sheet_id, 
         sheet_range = sheet_range)
-
-    # Convert to dataframe
-    df = pd.DataFrame(
+    df_users = pd.DataFrame(
         data=data[1:], 
         columns=data[0])
+    
+    # Pull observations data
+    sheet_id = "10Lt6tlYRfFSg5KBmF-xCOvdh6shfa1yuvgD2J5z6rbU"
+    sheet_range = "Observations!A1:E234"
+    data = read_data_from_google_sheet(
+        google_sheets_service=google_sheets_service, 
+        sheet_id = sheet_id, 
+        sheet_range = sheet_range)
+    df_observations = pd.DataFrame(
+        data=data[1:], 
+        columns=data[0])
+    
+    # Create dict_response
+    dict_response = {
+        'first_name': df_users['first_name'][df_users['id'] == user_id].get(0),
+        'observations': df_observations[['experiment_name','question','answer']][df_observations['user_id'] == user_id].to_dict('records')}
 
-    return { "data": df[df['id']==id].to_dict('list')}
+    return dict_response
 
 # %% Run app
 if __name__ == "__main__":
