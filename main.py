@@ -1,5 +1,8 @@
 # %% Set Up
 
+# Temp values
+user_id = 'u1'
+
 # %%%Import standard modules
 import os
 import uvicorn
@@ -8,9 +11,11 @@ import pandas as pd
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import dotenv_values # pip install python-dotenv
+from datetime import datetime
 
 # %%% Import custom modules
-from google_sheets_functions import create_google_sheets_service, read_data_from_google_sheet
+from google_sheets_functions import create_google_sheets_service, get_df_from_google_sheet
+from data_processing_functions import get_user_observations_helper
 
 # %%% Load environment variables
 
@@ -57,56 +62,24 @@ async def get_log(id: int) -> dict:
     return { "message": "The user id is: " + str(id)}
 
 @app.get("/google-sheets/")
-async def get_log(row: int) -> dict:
+async def get_google_sheets_data(row: int) -> dict:
 
     # Set data source
     sheet_id = "10Lt6tlYRfFSg5KBmF-xCOvdh6shfa1yuvgD2J5z6rbU"
     sheet_range = "Sheet1!A1:B234"
 
     # Read data from Google Sheets
-    data = read_data_from_google_sheet(
+    df = get_df_from_google_sheet(
         google_sheets_service=google_sheets_service, 
         sheet_id = sheet_id, 
         sheet_range = sheet_range)
-
-    # Convert to dataframe
-    df = pd.DataFrame(
-        data=data[1:], 
-        columns=data[0])
 
     return { "data": df.iloc[row].to_dict()}
 
-@app.get("/api/v1/experiment-observations/")
-async def get_log(user_id: str) -> dict:
+@app.get("/api/v1/user-observations/")
+async def get_user_observations(user_id: str) -> dict:
 
-    user_id = 'AAA'
-
-    # Pull user data
-    sheet_id = "10Lt6tlYRfFSg5KBmF-xCOvdh6shfa1yuvgD2J5z6rbU"
-    sheet_range = "Users!A1:D234"
-    data = read_data_from_google_sheet(
-        google_sheets_service=google_sheets_service, 
-        sheet_id = sheet_id, 
-        sheet_range = sheet_range)
-    df_users = pd.DataFrame(
-        data=data[1:], 
-        columns=data[0])
-    
-    # Pull observations data
-    sheet_id = "10Lt6tlYRfFSg5KBmF-xCOvdh6shfa1yuvgD2J5z6rbU"
-    sheet_range = "Observations!A1:E234"
-    data = read_data_from_google_sheet(
-        google_sheets_service=google_sheets_service, 
-        sheet_id = sheet_id, 
-        sheet_range = sheet_range)
-    df_observations = pd.DataFrame(
-        data=data[1:], 
-        columns=data[0])
-    
-    # Create dict_response
-    dict_response = {
-        'first_name': df_users['first_name'][df_users['id'] == user_id].get(0),
-        'observations': df_observations[['experiment_name','question','answer']][df_observations['user_id'] == user_id].to_dict('records')}
+    dict_response = get_user_observations_helper(user_id = user_id, google_sheets_service = google_sheets_service)
 
     return dict_response
 
@@ -119,4 +92,3 @@ if __name__ == "__main__":
     # Production
     # uvicorn.run("main:app", host="0.0.0.0", port=os.getenv("PORT", default=5000), log_level="info")
 
-    
