@@ -1,5 +1,6 @@
 import pandas as pd
-import threading
+import numpy as np
+import json
 from datetime import datetime
 from google_sheets_functions import get_df_from_google_sheet
 
@@ -62,6 +63,9 @@ def get_user_observations_helper(user_id, google_sheets_service):
     for tup in tuples:
         df = eval(f"pd.merge({tup[0]}, {tup[1]}, left_on={tup[2]}, right_on={tup[2]}, how='left')")
 
+    # Replace missing values (NaN) with "" as NaN is not acceptable in final JSON output
+    df.replace({np.nan: ""}, inplace = True)
+
     # Initial response dictionary
     dict_response = {}
     dict_response["first_name"] = df.first_name.get(0)
@@ -70,14 +74,14 @@ def get_user_observations_helper(user_id, google_sheets_service):
     # Collect data for each experiment group
     for experiment_group_id in df.experiment_group_id.unique():
 
-        df_experiment_group = df.query("experiment_group_id == '" + experiment_group_id  + "'")
+        df_experiment_group = df.query("experiment_group_id == '" + experiment_group_id  + "'").reset_index()
 
         array_experiment_sub_groups = []
 
-        # Collect data for each experiment sub group
+        # Assemble for each experiment in each experiment sub group
         for experiment_sub_group_id in df_experiment_group.experiment_sub_group_id.unique():
 
-            df_experiment_sub_group = df_experiment_group.query("experiment_sub_group_id == '" + experiment_sub_group_id  + "'")
+            df_experiment_sub_group = df_experiment_group.query("experiment_sub_group_id == '" + experiment_sub_group_id  + "'").reset_index()
 
             # Generate data for all associated experiments with this experiment sub group
             # Methodology: https://stackoverflow.com/questions/55004985/convert-pandas-dataframe-to-json-with-columns-as-key
@@ -85,9 +89,16 @@ def get_user_observations_helper(user_id, google_sheets_service):
             primary_cols = ['experiment_id', 'experiment']
             data_cols = ['observation_prompt', 'observation']
             dict_experiments = (df_experiment_sub_group.groupby(primary_cols)[data_cols]
-                .apply(lambda x: x.to_dict('r'))
-                .reset_index(name='data')
+                .apply(lambda x: x.to_dict('records'))
+                .reset_index(name='observations')
                 .to_dict(orient='records'))
+
+            # Set observations to "None" if there are no observations
+            for index in range(0, len(dict_experiments)):
+                if dict_experiments[index]['observations'] == [{'observation_prompt': '', 'observation': ''}]:
+                    dict_experiments[index]['observations'] = "None"
+            
+            # Add experiments / observations for this sub_group
             array_experiment_sub_groups.append(
                 {"experiment_sub_group_id": experiment_sub_group_id,
                 "experiment_sub_group": df_experiment_sub_group.experiment_sub_group.get(0),
@@ -104,4 +115,4 @@ def get_user_observations_helper(user_id, google_sheets_service):
     # Add experiment groups, sub_groups, experiments, and observations to the response dictionary
     dict_response['experiment_groups'] = array_experiment_groups
     
-    return dict_response
+    return json.dumps(dict_response) #turn Python single quotes into JSON formatted double quotes
