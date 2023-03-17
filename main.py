@@ -15,13 +15,13 @@ from datetime import datetime
 
 # %%% Import custom modules
 from google_sheets_functions import create_google_sheets_service, get_df_from_google_sheet
-from data_processing_functions import get_user_observations_helper
+from data_processing_functions import get_experimenter_log_helper
 
 # %%% Enable autoreload (only use when testing prior to launching server (locally or in production))
 # If you change code in custom functions, you'll need to reload them. Otherwise, you'll have to close out of Python and reimport everything.
 # https://switowski.com/blog/ipython-autoreload/
-%load_ext autoreload
-%autoreload 2
+# %load_ext autoreload
+# %autoreload 2
 
 # %%% Load environment variables
 
@@ -82,12 +82,10 @@ async def get_google_sheets_data(row: int) -> dict:
 
     return { "data": df.iloc[row].to_dict()}
 
-@app.get("/api/v1/user-observations/")
-async def get_user_observations(user_id: str) -> dict:
+@app.get("/v1/experimenter-log/")
+async def get_experimenter_log(log_id: str):
 
-    json_response = get_user_observations_helper(user_id = user_id, google_sheets_service = google_sheets_service)
-
-    return json_response
+    return get_experimenter_log_helper(log_id = log_id, google_sheets_service = google_sheets_service)
 
 # %% Run app
 if __name__ == "__main__":

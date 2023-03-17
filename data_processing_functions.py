@@ -4,7 +4,7 @@ import json
 from datetime import datetime
 from google_sheets_functions import get_df_from_google_sheet
 
-def get_user_observations_helper(user_id, google_sheets_service):
+def get_experimenter_log_helper(log_id, google_sheets_service):
 
     ## Pull data
 
@@ -12,6 +12,7 @@ def get_user_observations_helper(user_id, google_sheets_service):
     sheet_id = "10Lt6tlYRfFSg5KBmF-xCOvdh6shfa1yuvgD2J5z6rbU"
 
     # Pull data (note: we can't use exec() without throwing an error that the df_users doesn't exist later on... probably because it takes too long to return)
+    df_users_logs = get_df_from_google_sheet(google_sheets_service=google_sheets_service, sheet_id = sheet_id, sheet_range = 'users_logs!A1:Z1000')    
     df_users = get_df_from_google_sheet(google_sheets_service=google_sheets_service, sheet_id = sheet_id, sheet_range = 'users!A1:Z1000')
     df_experiment_groups = get_df_from_google_sheet(google_sheets_service=google_sheets_service, sheet_id = sheet_id, sheet_range = 'experiment_groups!A1:Z1000')
     df_experiment_sub_groups = get_df_from_google_sheet(google_sheets_service=google_sheets_service, sheet_id = sheet_id, sheet_range = 'experiment_sub_groups!A1:Z1000')
@@ -25,7 +26,6 @@ def get_user_observations_helper(user_id, google_sheets_service):
         ['users', 'user_id'],
         ['experiment_groups', 'experiment_group_id'],
         ['experiment_sub_groups', 'experiment_sub_group_id'],
-        ['users_experiment_sub_groups', 'not_applicable'],
         ['experiments', 'experiment_id'],
         ['observation_prompts', 'observation_prompt_id'],
         ['observations', 'observation_id'],
@@ -43,8 +43,8 @@ def get_user_observations_helper(user_id, google_sheets_service):
 
     ## Restrict data
 
-    # Restrict to relevant user
-    df_users = df_users[df_users['user_id'] == user_id]
+    # Restrict to relevant log
+    df_users_logs = df_users_logs[df_users_logs['log_id'] == log_id]
 
     # Restrict to experiment groups that have already been assigned
     today = pd.Timestamp(datetime.today())
@@ -53,7 +53,9 @@ def get_user_observations_helper(user_id, google_sheets_service):
 
     ## Construct response df
     tuples = [
-        ['df_users', 'df_users_experiment_sub_groups', ['user_id']],
+        #[left df, right df, join variables]
+        ['df_users_logs', 'df_users', ['user_id']],
+        ['df', 'df_users_experiment_sub_groups', ['user_id']],
         ['df', 'df_experiment_sub_groups', ['experiment_sub_group_id']],
         ['df', 'df_experiment_groups', ['experiment_group_id']],
         ['df', 'df_experiments', ['experiment_sub_group_id']],
@@ -115,4 +117,4 @@ def get_user_observations_helper(user_id, google_sheets_service):
     # Add experiment groups, sub_groups, experiments, and observations to the response dictionary
     dict_response['experiment_groups'] = array_experiment_groups
     
-    return json.dumps(dict_response) #turn Python single quotes into JSON formatted double quotes
+    return json.loads(json.dumps(dict_response)) #json.dumps() turns Python single quotes into JSON formatted double quotes and returns a string. json.loads() turns it into an actual json object
