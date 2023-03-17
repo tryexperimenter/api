@@ -46,10 +46,9 @@ def get_experimenter_log_helper(log_id, google_sheets_service):
     # Restrict to relevant log
     df_users_logs = df_users_logs[df_users_logs['log_id'] == log_id]
 
-    # Restrict to experiment groups that have already been assigned
-    today = pd.Timestamp(datetime.today())
-    df_users_experiment_sub_groups.query('assigned_date <= @today', inplace=True)
-
+    # Restrict to experiment groups that should be visible to user
+    # Note that all data from Google Sheets is read in as string, so we test equality with "1"
+    df_users_experiment_sub_groups.query('visible_to_user == "1"', inplace=True)
 
     ## Construct response df
     tuples = [
