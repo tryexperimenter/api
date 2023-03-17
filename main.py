@@ -1,8 +1,5 @@
 # %% Set Up
 
-# Temp values
-user_id = 'u1'
-
 # %%%Import standard modules
 import os
 import uvicorn
