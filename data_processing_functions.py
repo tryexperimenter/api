@@ -70,6 +70,7 @@ def get_experimenter_log_helper(log_id, google_sheets_service):
     # Initial response dictionary
     dict_response = {}
     dict_response["first_name"] = df.first_name.get(0)
+    dict_response["days_of_experimenting"] = (datetime.today() - df['assigned_date'].min()).days + 1 # Add 1 to include today
     array_experiment_groups = []
 
     # Collect data for each experiment group
@@ -103,6 +104,7 @@ def get_experimenter_log_helper(log_id, google_sheets_service):
             array_experiment_sub_groups.append(
                 {"experiment_sub_group_id": experiment_sub_group_id,
                 "experiment_sub_group": df_experiment_sub_group.experiment_sub_group.get(0),
+                "experiment_sub_group_assigned_date": df_experiment_sub_group.assigned_date.get(0).strftime("%B %#d, %Y"),
                 "experiments": dict_experiments}
             )
 
