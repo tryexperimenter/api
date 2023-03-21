@@ -20,15 +20,19 @@ def create_google_sheets_service(service_account_info):
 def read_data_from_google_sheet(google_sheets_service, sheet_id, sheet_range):
 
     request = google_sheets_service.spreadsheets().values().get(spreadsheetId=sheet_id, range=sheet_range)
+    print("Calling Google Sheets API")
     response = request.execute()
-
+    print("Google Sheets API Returned")
+    
     return response.get("values")
 
 # Read values from spreadsheet
 def get_df_from_google_sheet(google_sheets_service, sheet_id, sheet_range):
 
     request = google_sheets_service.spreadsheets().values().get(spreadsheetId=sheet_id, range=sheet_range)
+    print("Calling Google Sheets API")
     response = request.execute()
+    print("Google Sheets API Returned")
 
     data = response.get("values")
 
