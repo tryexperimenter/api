@@ -4,6 +4,8 @@ import json
 from datetime import datetime
 from google_sheets_functions import get_df_from_google_sheet
 
+# add some sample text
+
 def get_experimenter_log_helper(log_id, google_sheets_service):
 
     ## Pull data
