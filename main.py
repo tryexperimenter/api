@@ -1,7 +1,7 @@
 # %% Set Up
 
 # %%%Import standard modules
-import os
+import os, sys
 import uvicorn
 import json
 import pandas as pd
@@ -11,8 +11,15 @@ from dotenv import dotenv_values # pip install python-dotenv
 from datetime import datetime
 
 # %%% Import custom modules
+sys.path.append("./functions")
 from google_sheets_functions import create_google_sheets_service, get_df_from_google_sheet
 from data_processing_functions import get_experimenter_log_helper
+from logging_functions import get_logger
+from json_response_processing_functions import create_json_response
+
+# %%% Set up logging
+if 'logger' not in locals():
+    logger = get_logger(logger_name = "api")
 
 # %%% Enable autoreload (only use when testing prior to launching server (locally or in production))
 # If you change code in custom functions, you'll need to reload them. Otherwise, you'll have to close out of Python and reimport everything.
@@ -21,6 +28,7 @@ from data_processing_functions import get_experimenter_log_helper
 # %autoreload 2
 
 # %%% Load environment variables
+logger.info("Loading environment variables")
 
 ## Load variables from .env file or OS environment variables
 env_vars = {
@@ -32,17 +40,23 @@ env_vars = {
 # Convert string environment variables to JSON
 google_sheets_service_account_info = json.loads(env_vars.get('GOOGLE_SHEETS_API_SERVICE_ACCOUNT'))
 
-## Create service accounts
-google_sheets_service = create_google_sheets_service(service_account_info = google_sheets_service_account_info)
+# %%% Create service accounts
+logger.info("Creating Google Sheets service account")
+google_sheets_service = create_google_sheets_service(service_account_info = google_sheets_service_account_info, logger = logger)
 
 # %% Set up FastAPI
+logger.info("Setting up FastAPI")
 
-app = FastAPI()
+app = FastAPI(
+    # disable api.tryexperimenter.com/docs and /redoc so that anyone who has the endpoint can't see the docs
+    docs_url=None, redoc_url=None 
+)
 
 origins = [
     "http://localhost:3000",
     "localhost:3000",
-    "*" # allow all origins (not particularly safe)
+    "app.tryexperimenter.com",
+    #"*" # allow all origins (not particularly safe)
 ]
 
 app.add_middleware(
@@ -57,15 +71,22 @@ app.add_middleware(
 
 @app.get("/")
 def home():
-    return {"message": "Welcome to your FastAPI starter."}
+
+    logger.info("Endpoint called: /")
+
+    return {"message": "Success!"}
 
 @app.get("/user/")
 async def get_log(id: int) -> dict:
+
+    logger.info(f"Endpoint called: /user/?id={id}")
 
     return { "message": "The user id is: " + str(id)}
 
 @app.get("/google-sheets/")
 async def get_google_sheets_data(row: int) -> dict:
+
+    logger.info(f"Endpoint called: /googlesheets/?row={row}")
 
     # Set data source
     sheet_id = "10Lt6tlYRfFSg5KBmF-xCOvdh6shfa1yuvgD2J5z6rbU"
@@ -75,14 +96,27 @@ async def get_google_sheets_data(row: int) -> dict:
     df = get_df_from_google_sheet(
         google_sheets_service=google_sheets_service, 
         sheet_id = sheet_id, 
-        sheet_range = sheet_range)
+        sheet_range = sheet_range,
+        logger = logger)
 
     return { "data": df.iloc[row].to_dict()}
 
 @app.get("/v1/experimenter-log/")
 async def get_experimenter_log(log_id: str):
 
-    return get_experimenter_log_helper(log_id = log_id, google_sheets_service = google_sheets_service)
+    logger.info(f"Endpoint called: /v1/experimenter-log/?log_id={log_id}")
+
+    try:
+        logger.info("Calling get_experimenter_log_helper()")
+        dict_response = get_experimenter_log_helper(log_id = log_id, google_sheets_service = google_sheets_service, logger = logger)
+        logger.info("Calling create_json_response()")
+        json_response = create_json_response(dict_response = dict_response, logger = logger)
+        logger.info("Returning json_response")
+        return json_response
+    
+    except Exception as e:
+        print(e)
+        return {"message": "error"}
 
 # %% Run app
 if __name__ == "__main__":
