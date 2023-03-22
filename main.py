@@ -116,7 +116,7 @@ async def get_experimenter_log(log_id: str):
     
     except Exception as e:
         print(e)
-        return {"message": "error"}
+        return {"error": "true", "message": f"Error collecting Experimenter Log data for log_id: {log_id}"}
 
 # %% Run app
 if __name__ == "__main__":

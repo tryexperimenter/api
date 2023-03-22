@@ -9,5 +9,5 @@ def create_json_response(dict_response: dict, logger) -> dict:
     
     except Exception as e:
         logger.error(f"Error with converting dict_response to JSON object")
-        logger.err(f"Error: {e}")
-        return {"message": "error"}
+        logger.error(f"Error: {e}")
+        raise TypeError("dict_response has NaN values")

@@ -57,7 +57,7 @@ def get_experimenter_log_helper(log_id, google_sheets_service, logger):
         if len(df_users_logs) == 0:
             logger.info(f"log_id not found in df_users_logs for log_id: {log_id}")
             sleep(3) # Sleep to prevent brute force attacks
-            return {"error": "true", "message": f"Error generating Experimenter Log for log_id: {log_id}"}
+            return {"error": "true", "message": f"Error collecting Experimenter Log data for log_id: {log_id}"}
 
         # Restrict to experiment groups that should be visible to user
         # Note that all data from Google Sheets is read in as string, so we test equality with "1"
@@ -145,6 +145,6 @@ def get_experimenter_log_helper(log_id, google_sheets_service, logger):
     except Exception as e:
         logger.error(f"Error running get_experimenter_log_helper() for log_id: {log_id}")
         logger.error(f"Error: {e}")
-        return {"error": "true", "message": f"Error generating Experimenter Log for log_id: {log_id}"}
+        return {"error": "true", "message": f"Error collecting Experimenter Log data for log_id: {log_id}"}
     
     
