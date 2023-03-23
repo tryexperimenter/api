@@ -120,7 +120,7 @@ def get_experimenter_log_helper(log_id, google_sheets_service, logger):
                     .reset_index(name='observations')
                     .to_dict(orient='records'))
 
-                # Set observations to "None" if there are no observations
+                # For each experiment, set observations to "None" if there are no observations 
                 for index in range(0, len(dict_experiments)):
                     if dict_experiments[index]['observations'] == [{'observation_prompt': '', 'observation': ''}]:
                         dict_experiments[index]['observations'] = "None"

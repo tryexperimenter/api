@@ -63,12 +63,20 @@ app = FastAPI(
     docs_url=None, redoc_url=None 
 )
 
-origins = [
-    "http://localhost:3000",
-    "localhost:3000",
-    "app.tryexperimenter.com",
-    #"*" # allow all origins (not particularly safe)
-]
+if environment == "production":
+
+    origins = [
+        "app.tryexperimenter.com",
+    ]
+
+elif environment == "development":
+
+    origins = [
+        "http://localhost:3000",
+        "localhost:3000",
+        "app.tryexperimenter.com",
+        #"*" # allow all origins (not particularly safe)
+    ]
 
 app.add_middleware(
     CORSMiddleware,
@@ -150,9 +158,17 @@ async def get_experimenter_log(log_id: str):
 
 # %% Run app
 if __name__ == "__main__":
-    
-    # Development (reload on code changes)
-    # uvicorn.run("main:app", reload=True, host="0.0.0.0", port=os.getenv("PORT", default=5000), log_level="info")
 
-    # Production
-    uvicorn.run("main:app", host="0.0.0.0", port=os.getenv("PORT", default=5000), log_level="info")
+    # Start FastAPI server
+
+    if environment == "production":
+
+        # Production
+        uvicorn.run("main:app", host="0.0.0.0", port=os.getenv("PORT", default=5000), log_level="info")
+
+    elif environment == "development":
+
+        # Development (reload on code changes)
+        uvicorn.run("main:app", reload=True, host="0.0.0.0", port=os.getenv("PORT", default=5000), log_level="info")
+
+
