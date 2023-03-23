@@ -1,4 +1,5 @@
 import json
+from honeybadger import honeybadger
 
 def create_json_response(dict_response: dict, logger) -> dict:
 
@@ -8,6 +9,8 @@ def create_json_response(dict_response: dict, logger) -> dict:
         return json.loads(json.dumps(dict_response, allow_nan=False)) # FastAPI does a json.dumps(, allow_nan=False) and will throw an error if there are an NaN values, so we catch them earlier
     
     except Exception as e:
-        logger.error(f"Error with converting dict_response to JSON object")
-        logger.error(f"Error: {e}")
-        raise TypeError("dict_response has NaN values")
+
+        error_class = f"API | create_json_response()"
+        error_message = f"Error with create_json_response(); Error: {e}"
+        logger.error(error_message)
+        honeybadger.notify(error_class=error_class, error_message=error_message)

@@ -1,6 +1,7 @@
 from apiclient import discovery # pip install google-api-python-client
 from google.oauth2 import service_account # pip install google-auth-httplib2
 import pandas as pd
+from honeybadger import honeybadger
 
 
 ## Additional Methods for Google Sheets: 
@@ -18,12 +19,11 @@ def create_google_sheets_service(service_account_info, logger):
         return google_sheets_service
 
     except Exception as e:
-        logger.error("create_google_sheets_service() failed")
-        logger.error(f"Error message: {e.message}")
-        
 
-    except:
-        logger.error("create_google_sheets_service() failed")
+        error_class = f"API | create_google_sheets_service()"
+        error_message = f"create_google_sheets_service() failed; Error: {e}"
+        logger.error(error_message)
+        honeybadger.notify(error_class=error_class, error_message=error_message)        
 
 
 # Read values from spreadsheet
@@ -36,11 +36,11 @@ def read_data_from_google_sheet(google_sheets_service, sheet_id, sheet_range, lo
         return response.get("values")
     
     except Exception as e:
-        logger.error("read_data_from_google_sheet() failed")
-        logger.error(f"Error message: {e.message}")
 
-    except:
-        logger.error("read_data_from_google_sheet() failed")
+        error_class = f"API | read_data_from_google_sheet()"
+        error_message = f"read_data_from_google_sheet() failed; Error: {e}"
+        logger.error(error_message)
+        honeybadger.notify(error_class=error_class, error_message=error_message)
 
 # Read values from spreadsheet
 def get_df_from_google_sheet(google_sheets_service, sheet_id, sheet_range, logger):
@@ -54,11 +54,10 @@ def get_df_from_google_sheet(google_sheets_service, sheet_id, sheet_range, logge
         return pd.DataFrame(data=data[1:], columns=data[0])
     
     except Exception as e:
-        logger.error("get_df_from_google_sheet() failed")
-        logger.error(f"Error message: {e.message}")
-        
 
-    except:
-        logger.error("get_df_from_google_sheet() failed")
+        error_class = f"API | get_df_from_google_sheet()"
+        error_message = f"get_df_from_google_sheet() failed; Error: {e}"
+        logger.error(error_message)
+        honeybadger.notify(error_class=error_class, error_message=error_message)
 
 

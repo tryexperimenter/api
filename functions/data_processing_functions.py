@@ -3,6 +3,7 @@ import numpy as np
 from time import sleep
 from datetime import datetime
 from google_sheets_functions import get_df_from_google_sheet
+from honeybadger import honeybadger
 
 # add some sample text
 
@@ -55,8 +56,12 @@ def get_experimenter_log_helper(log_id, google_sheets_service, logger):
         df_users_logs = df_users_logs[df_users_logs['log_id'] == log_id]
 
         if len(df_users_logs) == 0:
-            logger.info(f"log_id not found in df_users_logs for log_id: {log_id}")
+
+            info_message = f"log_id not found in df_users_logs for log_id: {log_id}"
+            logger.info(info_message)
+
             sleep(3) # Sleep to prevent brute force attacks
+
             return {"error": "true", "message": f"Error collecting Experimenter Log data for log_id: {log_id}"}
 
         # Restrict to experiment groups that should be visible to user
@@ -143,8 +148,12 @@ def get_experimenter_log_helper(log_id, google_sheets_service, logger):
     
     # Catch any exceptions as we tried to execute the function
     except Exception as e:
-        logger.error(f"Error running get_experimenter_log_helper() for log_id: {log_id}")
-        logger.error(f"Error: {e}")
+
+        error_class = f"API | get_experimenter_log_helper()"
+        error_message = f"Error with /v1/experimenter-log/?log_id={log_id}; Error: {e}"
+        logger.error(error_message)
+        honeybadger.notify(error_class=error_class, error_message=error_message)
+
         return {"error": "true", "message": f"Error collecting Experimenter Log data for log_id: {log_id}"}
     
     

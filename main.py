@@ -5,10 +5,13 @@ import os, sys
 import uvicorn
 import json
 import pandas as pd
-from fastapi import FastAPI
+from fastapi import FastAPI, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import dotenv_values # pip install python-dotenv
 from datetime import datetime
+# honeybadger.io: monitor errors in production
+from honeybadger import honeybadger 
+from honeybadger.contrib.fastapi import HoneybadgerRoute
 
 # %%% Import custom modules
 sys.path.append("./functions")
@@ -38,11 +41,19 @@ env_vars = {
 
 ## Assign environment variables to local variables
 # Convert string environment variables to JSON
+environment=env_vars.get('ENVIRONMENT')
 google_sheets_service_account_info = json.loads(env_vars.get('GOOGLE_SHEETS_API_SERVICE_ACCOUNT'))
+honeybadger_api_key = env_vars.get('HONEYBADGER_API_KEY')
 
 # %%% Create service accounts
+logger.info("Configure Honeybadger monitoring")
+honeybadger.configure(
+    api_key=honeybadger_api_key,
+    environment=environment)
 logger.info("Creating Google Sheets service account")
 google_sheets_service = create_google_sheets_service(service_account_info = google_sheets_service_account_info, logger = logger)
+
+
 
 # %% Set up FastAPI
 logger.info("Setting up FastAPI")
@@ -64,8 +75,12 @@ app.add_middleware(
     allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"]
+    allow_headers=["*"],
 )
+
+# Add Honeybadger monitoring (https://docs.honeybadger.io/lib/python/?projectToken=hbp_ovXY9oSgRtyAvxHA9XSntJlClDLE2Q3PXxDl#fastapi-advanced-usage-)
+app.router.route_class = HoneybadgerRoute
+router = APIRouter(route_class=HoneybadgerRoute)
 
 # %% Define routes
 
@@ -76,12 +91,22 @@ def home():
 
     return {"message": "Success!"}
 
+@app.get("/sample_error/")
+async def get_error() -> dict:
+
+    logger.info(f"Endpoint called: /sample_error/")
+
+    a = 2/0
+
+    return { "message": "Error: " + a}
+
 @app.get("/user/")
 async def get_log(id: int) -> dict:
 
     logger.info(f"Endpoint called: /user/?id={id}")
 
     return { "message": "The user id is: " + str(id)}
+
 
 @app.get("/google-sheets/")
 async def get_google_sheets_data(row: int) -> dict:
@@ -115,7 +140,12 @@ async def get_experimenter_log(log_id: str):
         return json_response
     
     except Exception as e:
-        print(e)
+        
+        error_class = f"API | /v1/experimenter-log/?log_id={log_id}"
+        error_message = f"Error with /v1/experimenter-log/?log_id={log_id}; Error: {e}"
+        logger.error(error_message)
+        honeybadger.notify(error_class=error_class, error_message=error_message)
+
         return {"error": "true", "message": f"Error collecting Experimenter Log data for log_id: {log_id}"}
 
 # %% Run app
