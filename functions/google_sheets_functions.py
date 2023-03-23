@@ -2,6 +2,7 @@ from apiclient import discovery # pip install google-api-python-client
 from google.oauth2 import service_account # pip install google-auth-httplib2
 import pandas as pd
 from honeybadger import honeybadger
+import traceback
 
 
 ## Additional Methods for Google Sheets: 
@@ -23,6 +24,7 @@ def create_google_sheets_service(service_account_info, logger):
         error_class = f"API | create_google_sheets_service()"
         error_message = f"create_google_sheets_service() failed; Error: {e}"
         logger.error(error_message)
+        logger.error(traceback.format_exc()) # provide the full traceback of everything that caused the error
         honeybadger.notify(error_class=error_class, error_message=error_message)        
 
 
@@ -40,6 +42,7 @@ def read_data_from_google_sheet(google_sheets_service, sheet_id, sheet_range, lo
         error_class = f"API | read_data_from_google_sheet()"
         error_message = f"read_data_from_google_sheet() failed; Error: {e}"
         logger.error(error_message)
+        logger.error(traceback.format_exc()) # provide the full traceback of everything that caused the error
         honeybadger.notify(error_class=error_class, error_message=error_message)
 
 # Read values from spreadsheet
@@ -58,6 +61,7 @@ def get_df_from_google_sheet(google_sheets_service, sheet_id, sheet_range, logge
         error_class = f"API | get_df_from_google_sheet()"
         error_message = f"get_df_from_google_sheet() failed; Error: {e}"
         logger.error(error_message)
+        logger.error(traceback.format_exc()) # provide the full traceback of everything that caused the error
         honeybadger.notify(error_class=error_class, error_message=error_message)
 
 

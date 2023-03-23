@@ -4,6 +4,7 @@ from time import sleep
 from datetime import datetime
 from google_sheets_functions import get_df_from_google_sheet
 from honeybadger import honeybadger
+import traceback
 
 # add some sample text
 
@@ -62,7 +63,7 @@ def get_experimenter_log_helper(log_id, google_sheets_service, logger):
 
             sleep(3) # Sleep to prevent brute force attacks
 
-            return {"error": "true", "message": f"Error collecting Experimenter Log data for log_id: {log_id}"}
+            return {"error": "True", "message": f"Error collecting Experimenter Log data for log_id: {log_id}"}
 
         # Restrict to experiment groups that should be visible to user
         # Note that all data from Google Sheets is read in as string, so we test equality with "1"
@@ -86,20 +87,24 @@ def get_experimenter_log_helper(log_id, google_sheets_service, logger):
         # Replace missing values (NaN) with "" as NaN is not acceptable in final JSON output
         df.replace({np.nan: ""}, inplace = True)
 
-        # Initial response dictionary
+        # Initialize response dictionary
         dict_response = {}
+        dict_response["log_id"] = log_id
         dict_response["first_name"] = df.first_name.get(0)
         dict_response["days_of_experimenting"] = max(1, (datetime.today() - df['assigned_date'].min()).days + 1) # Add 1 to include today, take max in case there are no assigned dates
+        dict_response['experiments_to_display'] = "True"
+        dict_response['error'] = "False"
         array_experiment_groups = []
+
+        # Return if no experiments found for user (e.g., every experiment id is '')
+        experiment_ids = df.experiment_id.unique() 
+        if len(experiment_ids) == 1 and experiment_ids[0] == '':
+            dict_response['experiments_to_display'] = "False"
+            logger.info(f"No experiments to display for log_id: {log_id}")
+            return dict_response
 
         # Collect data for each experiment group
         for experiment_group_id in df.experiment_group_id.unique():
-
-            # Return if there is no experiment group associated with the user
-            if len(experiment_group_id) == 0:
-                dict_response['experiment_groups'] = "None"
-                logger.info(f"No experiment groups found for log_id: {log_id}")
-                return dict_response
 
             df_experiment_group = df.query("experiment_group_id == '" + experiment_group_id  + "'").reset_index()
 
@@ -107,7 +112,7 @@ def get_experimenter_log_helper(log_id, google_sheets_service, logger):
 
             # Assemble for each experiment in each experiment sub group
             for experiment_sub_group_id in df_experiment_group.experiment_sub_group_id.unique():
-
+                
                 df_experiment_sub_group = df_experiment_group.query("experiment_sub_group_id == '" + experiment_sub_group_id  + "'").reset_index()
 
                 # Generate data for all associated experiments with this experiment sub group
@@ -152,8 +157,9 @@ def get_experimenter_log_helper(log_id, google_sheets_service, logger):
         error_class = f"API | get_experimenter_log_helper()"
         error_message = f"Error with /v1/experimenter-log/?log_id={log_id}; Error: {e}"
         logger.error(error_message)
+        logger.error(traceback.format_exc()) # provide the full traceback of everything that caused the error
         honeybadger.notify(error_class=error_class, error_message=error_message)
 
-        return {"error": "true", "message": f"Error collecting Experimenter Log data for log_id: {log_id}"}
+        return {"error": "True", "message": f"Error collecting Experimenter Log data for log_id: {log_id}"}
     
     

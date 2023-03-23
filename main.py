@@ -12,6 +12,7 @@ from datetime import datetime
 # honeybadger.io: monitor errors in production
 from honeybadger import honeybadger 
 from honeybadger.contrib.fastapi import HoneybadgerRoute
+import traceback
 
 # %%% Import custom modules
 sys.path.append("./functions")
@@ -65,9 +66,7 @@ app = FastAPI(
 
 if environment == "production":
 
-    origins = [
-        "app.tryexperimenter.com",
-    ]
+    origins = ["app.tryexperimenter.com",]
 
 elif environment == "development":
 
@@ -132,7 +131,7 @@ async def get_google_sheets_data(row: int) -> dict:
         sheet_range = sheet_range,
         logger = logger)
 
-    return { "data": df.iloc[row].to_dict()}
+    return {"data": df.iloc[row].to_dict()}
 
 @app.get("/v1/experimenter-log/")
 async def get_experimenter_log(log_id: str):
@@ -142,8 +141,10 @@ async def get_experimenter_log(log_id: str):
     try:
         logger.info("Calling get_experimenter_log_helper()")
         dict_response = get_experimenter_log_helper(log_id = log_id, google_sheets_service = google_sheets_service, logger = logger)
+
         logger.info("Calling create_json_response()")
         json_response = create_json_response(dict_response = dict_response, logger = logger)
+
         logger.info("Returning json_response")
         return json_response
     
@@ -152,9 +153,10 @@ async def get_experimenter_log(log_id: str):
         error_class = f"API | /v1/experimenter-log/?log_id={log_id}"
         error_message = f"Error with /v1/experimenter-log/?log_id={log_id}; Error: {e}"
         logger.error(error_message)
+        logger.error(traceback.format_exc()) # provide the full traceback of everything that caused the error
         honeybadger.notify(error_class=error_class, error_message=error_message)
 
-        return {"error": "true", "message": f"Error collecting Experimenter Log data for log_id: {log_id}"}
+        return {"error": "True", "message": f"Error collecting Experimenter Log data for log_id: {log_id}"}
 
 # %% Run app
 if __name__ == "__main__":
@@ -170,5 +172,3 @@ if __name__ == "__main__":
 
         # Development (reload on code changes)
         uvicorn.run("main:app", reload=True, host="0.0.0.0", port=os.getenv("PORT", default=5000), log_level="info")
-
-
