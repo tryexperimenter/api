@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import dotenv_values # pip install python-dotenv
 from datetime import datetime
 # honeybadger.io: monitor errors in production
+# https://www.honeybadger.io/blog/honeybadger-fastapi-python/ and https://docs.honeybadger.io/lib/python/#fastapi-advanced-usage-
 from honeybadger import honeybadger 
 from honeybadger.contrib.fastapi import HoneybadgerRoute
 import traceback
