@@ -63,7 +63,7 @@ def get_experimenter_log_helper(log_id, google_sheets_service, logger):
 
             sleep(3) # Sleep to prevent brute force attacks
 
-            return {"error": "True", "message": f"Error collecting Experimenter Log data for log_id: {log_id}"}
+            return {"error": "True", "end_user_error_message": f"Error collecting Experimenter Log data for log_id: {log_id}"}
 
         # Restrict to experiment groups that should be visible to user
         # Note that all data from Google Sheets is read in as string, so we test equality with "1"
@@ -160,6 +160,6 @@ def get_experimenter_log_helper(log_id, google_sheets_service, logger):
         logger.error(traceback.format_exc()) # provide the full traceback of everything that caused the error
         honeybadger.notify(error_class=error_class, error_message=error_message)
 
-        return {"error": "True", "message": f"Error collecting Experimenter Log data for log_id: {log_id}"}
+        return {"error": "True", "end_user_error_message": f"Error collecting Experimenter Log data for log_id: {log_id}"}
     
     

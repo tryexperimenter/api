@@ -26,6 +26,7 @@ def create_google_sheets_service(service_account_info, logger):
         logger.error(error_message)
         logger.error(traceback.format_exc()) # provide the full traceback of everything that caused the error
         honeybadger.notify(error_class=error_class, error_message=error_message)        
+        raise Exception(error_message)
 
 
 # Read values from spreadsheet
@@ -44,6 +45,7 @@ def read_data_from_google_sheet(google_sheets_service, sheet_id, sheet_range, lo
         logger.error(error_message)
         logger.error(traceback.format_exc()) # provide the full traceback of everything that caused the error
         honeybadger.notify(error_class=error_class, error_message=error_message)
+        raise Exception(error_message)
 
 # Read values from spreadsheet
 def get_df_from_google_sheet(google_sheets_service, sheet_id, sheet_range, logger):
@@ -63,5 +65,6 @@ def get_df_from_google_sheet(google_sheets_service, sheet_id, sheet_range, logge
         logger.error(error_message)
         logger.error(traceback.format_exc()) # provide the full traceback of everything that caused the error
         honeybadger.notify(error_class=error_class, error_message=error_message)
+        raise Exception(error_message)
 
 
