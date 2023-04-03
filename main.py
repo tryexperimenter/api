@@ -17,10 +17,11 @@ import traceback
 
 # %%% Import custom modules
 sys.path.append("./functions")
-from google_sheets_functions import create_google_sheets_service, get_df_from_google_sheet
+from google_sheets_functions import create_google_sheets_service, get_df_from_google_sheet, append_data_to_google_sheet
 from data_processing_functions import get_experimenter_log_helper
 from logging_functions import get_logger
 from json_response_processing_functions import create_json_response
+from analytics_functions import log_api_call
 
 # %%% Set up logging
 if 'logger' not in locals():
@@ -137,7 +138,10 @@ async def get_google_sheets_data(row: int) -> dict:
 @app.get("/v1/experimenter-log/")
 async def get_experimenter_log(log_id: str):
 
-    logger.info(f"Endpoint called: /v1/experimenter-log/?log_id={log_id}")
+    # Log API call
+    endpoint = f"/v1/experimenter-log/?log_id={log_id}"
+    logger.info(f"Endpoint called: {endpoint}")
+    log_api_call(endpoint=endpoint, google_sheets_service=google_sheets_service, logger=logger)
 
     try:
         logger.info("Calling get_experimenter_log_helper()")

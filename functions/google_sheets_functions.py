@@ -6,7 +6,8 @@ import traceback
 
 
 ## Additional Methods for Google Sheets: 
-# Example of writing data: https://denisluiz.medium.com/python-with-google-sheets-service-account-step-by-step-8f74c26ed28e
+# Writing data: 
+# https://denisluiz.medium.com/python-with-google-sheets-service-account-step-by-step-8f74c26ed28e
 # https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.values
 
 # Create connection to Google Sheets API
@@ -67,4 +68,26 @@ def get_df_from_google_sheet(google_sheets_service, sheet_id, sheet_range, logge
         honeybadger.notify(error_class=error_class, error_message=error_message)
         raise Exception(error_message)
 
+# Add row(s) of data to spreadsheet
+# https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.values/append#InsertDataOption
+def append_data_to_google_sheet(google_sheets_service, sheet_id, sheet_range, data, logger):
 
+    try: 
+        request = google_sheets_service.spreadsheets().values().append(
+            spreadsheetId=sheet_id, 
+            range=sheet_range,
+            valueInputOption="USER_ENTERED",
+            insertDataOption="INSERT_ROWS",
+            body={"values": data})
+        response = request.execute()
+        
+        return response.get("updates")
+    
+    except Exception as e:
+
+        error_class = f"API | append_data_to_google_sheet()"
+        error_message = f"append_data_to_google_sheet() failed; Error: {e}"
+        logger.error(error_message)
+        logger.error(traceback.format_exc()) # provide the full traceback of everything that caused the error
+        honeybadger.notify(error_class=error_class, error_message=error_message)
+        raise Exception(error_message)
