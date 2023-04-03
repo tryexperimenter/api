@@ -67,13 +67,14 @@ app = FastAPI(
 
 if environment == "production":
 
-    origins = ["https://app.tryexperimenter.com",]
+    origins = [
+        "https://app.tryexperimenter.com",
+    ]
 
 elif environment == "development":
 
     origins = [
         "http://localhost:3000",
-        "localhost:3000",
         #"*" # allow all origins (not particularly safe)
     ]
 
