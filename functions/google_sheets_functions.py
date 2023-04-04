@@ -4,11 +4,10 @@ import pandas as pd
 from honeybadger import honeybadger
 import traceback
 
-
-## Additional Methods for Google Sheets: 
-# Writing data: 
-# https://denisluiz.medium.com/python-with-google-sheets-service-account-step-by-step-8f74c26ed28e
-# https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.values
+# Set up info
+# Instructions: https://denisluiz.medium.com/python-with-google-sheets-service-account-step-by-step-8f74c26ed28e
+# Sample service_account_info: {"type": "service_account","project_id": "experimenter-3744420","private_key_id": "d9737f31fcfbaf864facboops33997393d552507e","private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEIJJKSC593ASCBKgwggSkAgEAAoIBAQDOEcBjZFnZURRa\nUaXzixOsnd3efcu/Vn97OGQNOlbYBePvGZ84lV4tOPjHSo9DJaSUGMjao1nEvXfA\nN9Fbd1cRTSD2MsVBzp/tD/EqBnFGhCF08XznhFBm+qO5UwGQ1/AD0G3yt3aytCNY\nN/xmSI8WUVfB9MbQ8H4FPm+KofW3jug0a2MdQy9aKPW1KydSOvVhaVcKvRXgXhTg\noUyXf8f9IN/x8zmTStaMc3aY80LENXpIECIOR/RoCHzrZWQzoRPL/Shy\n9mqzimZ61cYHW66NStaehIMk0ZMXF1TpwDoA\nElFAWNaLAgMBAAECggEAAdYWqMwUIOOgEs33dJwgqMEfYQQt9J6ItEhkW9nRPEuR\nJGhOCusJ081WKjB35llHhipSX+BkxGQL1SKqMu51UConyQnayCNXOX2S4JT+HWrA\nAZLFUirTrJc/Lj+XG/tQoDgTQr5vyFfimL6m+SJcZA6Fgaz0uJfsB4/u3oVi8yfG\nwgRoKw3Hb1RIZS+zfH+17bzmSMkHmyA5/VWaZmOqjARApN7D8VB2A9C1tJJLLlRN\nGqVzvSqbsJWq4lvfCZSIsAuT2xreZetzmAo+9ayKV88POHlBj2KiUVgHgGlulm1D\nTGkpIliKks8G/vya1lsExuNyJQvQiRONvND009QHgQKBgQDlxC5eqsPL/uRSnBtX\n0Ud2juHge5uf+/+SQJQWbsETPscGcTUo54VKp7HDAqi9kf5OrLmx40QGA5wqaARH\n/o6t9S4F5EpDV5h5qDBytt+S/FAHRFG6p+F3Hga3xAaGtXA1NZJ8YqwrBv0/UY78\nTjMyYQpaJ8FznVPxGHTN3iqY4wKBgQDlmO7ooPyLMxAnttPmNefpJXQqbFzny+UI\n9GT/zmohmE1JOt1FPSEEwj9IEQf/qazl7mGqovkJDCgr7SFf9yP0W3Hyi4O+kyTl\nXwIGDKrRlnSi6We/AyJ9Ud+djUl2KcuSA4F3AzXS4E94ACyFoh9HZP7hDEjprNKA\n2ikRESXEOQKBgQC09QhMGJOyMyJhiX7jb/ingCqXYOKVYqPK7L9012+Kl7Op+DkU\n6RqKTH5tBsgc3UF7dv+dAU+OqQMyRs+wX+TBTssbasuuM+vrTLIzdqGoorzorD7u\nEdA5v1UtH96/81/XGEUxX4kXLh7/4l0JixE5SUIc9Rif1LXKuSctCB9mXwKBgQDC\n7pdYluYT4STEMyuxdu8ROaVpJ1uxyaEJe0YNEdl18HMdy4Z19LKF8c38h8k8vXh4\nN25gi8HYdqPct5Xwfknee41BGkaelRtsSr/TFwoorA8XCgf1Wtn7gHnUsFJAqreV\nnrharTUTdzLBdZRXWRApc4wa0m1NSFfo4lCflulzsQKBgFbnRgeYq8LOkjhDRGzq\nhJaT8Bqf3133Bd/MOMMlvMtKYIyJEsMEBCXFOkHmdNndIxkYipr6bTegLqyJpxz3\nOgnTcvVgja8LkSYR6fo9Hi7hdoaQwYoV7t3yEapbz+8YuGY36XQJDc/AOnbdAZzY\neucross94RilwuSAaPPB3h37\n-----END PRIVATE KEY-----\n","client_email": "google-sheets-api@experimenter-374430.iam.gserviceaccount.com","client_id": "110586022093557292137","auth_uri": "https://accounts.google.com/o/oauth2/auth","token_uri": "https://oauth2.googleapis.com/token","auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs","client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/google-sheets-api%40experimenter-374320.iam.gserviceaccount.com"}
+# Methods: https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.values
 
 # Create connection to Google Sheets API
 def create_google_sheets_service(service_account_info, logger):
