@@ -17,11 +17,11 @@ import traceback
 
 # %%% Import custom modules
 sys.path.append("./functions")
-from google_sheets_functions import create_google_sheets_service, get_df_from_google_sheet, append_data_to_google_sheet
 from data_processing_functions import get_experimenter_log_helper
 from logging_functions import get_logger
 from json_response_processing_functions import create_json_response
 from analytics_functions import log_api_call
+from supabase_db_functions import create_supabase_client
 
 # %%% Set up logging
 if 'logger' not in locals():
@@ -45,16 +45,17 @@ env_vars = {
 ## Assign environment variables to local variables
 # Convert string environment variables to JSON
 environment=env_vars.get('ENVIRONMENT')
-google_sheets_service_account_info = json.loads(env_vars.get('GOOGLE_SHEETS_API_SERVICE_ACCOUNT'))
 honeybadger_api_key = env_vars.get('HONEYBADGER_API_KEY')
+supabase_url: str = env_vars.get("SUPABASE_URL")
+supabase_public_api_key: str = env_vars.get("SUPABASE_PUBLIC_API_KEY")
 
 # %%% Create service accounts
 logger.info("Configure Honeybadger monitoring")
 honeybadger.configure(
     api_key=honeybadger_api_key,
     environment=environment)
-logger.info("Creating Google Sheets service account")
-google_sheets_service = create_google_sheets_service(service_account_info = google_sheets_service_account_info, logger = logger)
+logger.info("Creating Supabase Client")
+supabase_client = create_supabase_client(supabase_url=supabase_url, supabase_public_api_key=supabase_public_api_key, logger=logger)
 
 
 
@@ -116,36 +117,17 @@ async def get_log(id: int) -> dict:
 
     return { "message": "The user id is: " + str(id)}
 
-
-@app.get("/google-sheets/")
-async def get_google_sheets_data(row: int) -> dict:
-
-    logger.info(f"Endpoint called: /googlesheets/?row={row}")
-
-    # Set data source
-    sheet_id = "10Lt6tlYRfFSg5KBmF-xCOvdh6shfa1yuvgD2J5z6rbU"
-    sheet_range = "Sheet1!A1:B234"
-
-    # Read data from Google Sheets
-    df = get_df_from_google_sheet(
-        google_sheets_service=google_sheets_service, 
-        sheet_id = sheet_id, 
-        sheet_range = sheet_range,
-        logger = logger)
-
-    return {"data": df.iloc[row].to_dict()}
-
 @app.get("/v1/experimenter-log/")
 async def get_experimenter_log(log_id: str):
 
     # Log API call
     endpoint = f"/v1/experimenter-log/?log_id={log_id}"
     logger.info(f"Endpoint called: {endpoint}")
-    log_api_call(endpoint=endpoint, google_sheets_service=google_sheets_service, logger=logger)
+    # log_api_call(endpoint=endpoint, supabase_client=supabase_client, logger=logger)
 
     try:
         logger.info("Calling get_experimenter_log_helper()")
-        dict_response = get_experimenter_log_helper(log_id = log_id, google_sheets_service = google_sheets_service, logger = logger)
+        dict_response = get_experimenter_log_helper(public_user_id = log_id, supabase_client = supabase_client, logger = logger)
 
         logger.info("Calling create_json_response()")
         json_response = create_json_response(dict_response = dict_response, logger = logger)

@@ -31,6 +31,22 @@ import traceback
 # ## Call get_user() postgres function with email parameter given
 # response = supabase_client.rpc(fn = "get_user", params = {"email":"santa@gmail.com"}).execute()
 
+# Create Supabase Client
+def create_supabase_client(supabase_url, supabase_public_api_key, logger):
+
+    try: 
+
+        return create_client(supabase_url, supabase_public_api_key)
+
+    except Exception as e:
+
+        error_class = f"API | create_supabase_client()"
+        error_message = f"create_supabase_client() failed; Error: {e}"
+        logger.error(error_message)
+        logger.error(traceback.format_exc()) # provide the full traceback of everything that caused the error
+        honeybadger.notify(error_class=error_class, error_message=error_message)        
+        raise Exception(error_message)
+
 
 # %% Functions to query Supabase
 

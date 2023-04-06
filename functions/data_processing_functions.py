@@ -2,40 +2,13 @@ import pandas as pd
 import numpy as np
 from time import sleep
 from datetime import datetime
-from supabase_db_functions import supabase_get_experimenter_log_data
+import pytz
 from honeybadger import honeybadger
 import traceback
+from supabase_db_functions import supabase_get_experimenter_log_data
 
-## Load variables from .env file or OS environment variables
-from supabase import create_client, Client
-import os
-from dotenv import dotenv_values # pip install python-dotenv
-env_vars = {
-    **dotenv_values(r"C:/Users/trist/experimenter/api/.env"),
-    **os.environ,  # override loaded values with environment variables
-}
-
-## Intialize Supabase client
-supabase_url: str = env_vars.get("SUPABASE_URL")
-supabase_public_api_key: str = env_vars.get("SUPABASE_PUBLIC_API_KEY")
-supabase_client: Client = create_client(supabase_url, supabase_public_api_key)
-
-#Akua: 255243
-#Tristan: f1c14b
-
-response = supabase_client.rpc(
-            fn = "get_experimenter_log_data", 
-            params = {"public_user_id": "f1c14b"}).execute()
-
-df = pd.DataFrame(response.data)         
 
 def get_experimenter_log_helper(public_user_id, supabase_client, logger):
-
-# Deal with each case:
-# 1. public_user_id not found
-# 2. public_user_id found but no experiments to display
-# 3. public_user_id found and experiments to display
-# Probably need to do multiple with statements (first for user_lookups, then for experiments, then for observations)
 
     try:
 
@@ -60,6 +33,7 @@ def get_experimenter_log_helper(public_user_id, supabase_client, logger):
         dict_response = {}
         dict_response["public_user_id"] = public_user_id
         dict_response["first_name"] = df.first_name.get(0)
+        dict_response['experiments_to_display'] = "True"
         dict_response['error'] = "False"
 
         ## CASE 2: User exists but has no assigned experiments
@@ -79,23 +53,17 @@ def get_experimenter_log_helper(public_user_id, supabase_client, logger):
         for date_var in date_vars:
             exec(f"df['{date_var}'] = pd.to_datetime(df['{date_var}'], infer_datetime_format=True)")
 
-
-        ## Restrict data
-        logger.info("Restricting data")
-
-        # Restrict to experiment_sub_groups that should be visible to user (e.g., action_datetime is before today at local timezone??)
-        
-        df_users_experiment_sub_groups.query('visible_to_user == "1"', inplace=True)
-
         # Replace missing values (NaN) with "" as NaN is not acceptable in final JSON output
         df.replace({np.nan: ""}, inplace = True)
 
-        # Update response dictionary
-        dict_response["days_of_experimenting"] = 1 # placeholder if we have not yet assigned experiments
-        dict_response['experiments_to_display'] = "True"
-        dict_response["days_of_experimenting"] = max(1, (datetime.today() - df['assigned_date'].min()).days + 1) # Add 1 to include today, take max in case there are no assigned dates
-        dict_response['experiments_to_display'] = "True"
+        ## CASE 3: User exists with assigned experiments (and potentially observations)
+        # Outcome: Return dict_response with all of the experiments and observations for the user
+
+        ## Update response dictionary
+        dict_response["days_of_experimenting"] = (pytz.timezone('UTC').localize(datetime.utcnow()) - df['display_datetime'].min()).days + 1 # Add 1 to include today, take max in case there are no assigned dates
         
+        ## Prepare dict_response with all of the experiments and observations for the user
+
         # Initialize helper array
         array_experiment_groups = []
 
@@ -130,7 +98,7 @@ def get_experimenter_log_helper(public_user_id, supabase_client, logger):
                 array_experiment_sub_groups.append(
                     {"experiment_sub_group_id": experiment_sub_group_id,
                     "experiment_sub_group": df_experiment_sub_group.experiment_sub_group.get(0),
-                    "experiment_sub_group_assigned_date": df_experiment_sub_group.assigned_date.get(0).strftime("%B %#d, %Y"),
+                    "experiment_sub_group_display_date": df_experiment_sub_group.display_datetime.get(0).strftime("%B %#d, %Y"),
                     "experiments": dict_experiments}
                 )
 
