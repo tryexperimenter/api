@@ -25,6 +25,9 @@ import traceback
 # response = supabase_client.table("users").select("*").execute()
 # df = pd.DataFrame(response.data)
 
+# ## Directly insert data into a database table
+# response = supabase_client.table("api_calls").insert({"environment": environment, "endpoint": endpoint}).execute()
+
 # ## Call users() postgres function with no parameters given
 # response = supabase_client.rpc(fn = "users", params = {}).execute()
 
