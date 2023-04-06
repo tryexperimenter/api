@@ -118,17 +118,20 @@ async def get_log(id: int) -> dict:
     return { "message": "The user id is: " + str(id)}
 
 @app.get("/v1/experimenter-log/")
-async def get_experimenter_log(log_id: str):
-
-    # Log API call
-    endpoint = f"/v1/experimenter-log/?log_id={log_id}"
-    logger.info(f"Endpoint called: {endpoint}")
-    # log_api_call(endpoint=endpoint, supabase_client=supabase_client, logger=logger)
+async def get_experimenter_log(public_user_id: str):
 
     try:
-        logger.info("Calling get_experimenter_log_helper()")
-        dict_response = get_experimenter_log_helper(public_user_id = log_id, supabase_client = supabase_client, logger = logger)
 
+        # Log API call
+        endpoint = f"/v1/experimenter-log/?public_user_id={public_user_id}"
+        logger.info(f"Endpoint called: {endpoint}")
+        log_api_call(environment=environment, endpoint=endpoint, supabase_client=supabase_client, logger=logger)
+
+        # Get experimenter log data
+        logger.info("Calling get_experimenter_log_helper()")
+        dict_response = get_experimenter_log_helper(public_user_id = public_user_id, supabase_client = supabase_client, logger = logger)
+
+        # Format response as JSON
         logger.info("Calling create_json_response()")
         json_response = create_json_response(dict_response = dict_response, logger = logger)
 
@@ -137,13 +140,13 @@ async def get_experimenter_log(log_id: str):
     
     except Exception as e:
         
-        error_class = f"API | /v1/experimenter-log/?log_id={log_id}"
-        error_message = f"Error with /v1/experimenter-log/?log_id={log_id}; Error: {e}"
+        error_class = f"API | /v1/experimenter-log/?public_user_id={public_user_id}"
+        error_message = f"Error with /v1/experimenter-log/?public_user_id={public_user_id}; Error: {e}"
         logger.error(error_message)
         logger.error(traceback.format_exc()) # provide the full traceback of everything that caused the error
         honeybadger.notify(error_class=error_class, error_message=error_message)
 
-        return {"error": "True", "end_user_error_message": f"Error collecting Experimenter Log data for log_id: {log_id}"}
+        return {"error": "True", "end_user_error_message": f"Error collecting Experimenter Log data for public_user_id: {public_user_id}"}
 
 # %% Run app
 if __name__ == "__main__":
