@@ -89,7 +89,7 @@ def get_experimenter_log_helper(public_user_id, supabase_client, logger):
                     .reset_index(name='observations')
                     .to_dict(orient='records'))
 
-                # For each experiment, set observations to "None" if there are no observations 
+                # For each experiment, set observations to "None" if there are no observation prompts / observations 
                 for index in range(0, len(dict_experiments)):
                     if dict_experiments[index]['observations'] == [{'observation_prompt': '', 'observation': ''}]:
                         dict_experiments[index]['observations'] = "None"
