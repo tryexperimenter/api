@@ -5,6 +5,7 @@ from datetime import datetime
 import pytz
 from honeybadger import honeybadger
 import traceback
+import smartypants
 from supabase_db_functions import supabase_get_experimenter_log_data
 
 
@@ -55,6 +56,11 @@ def get_experimenter_log_helper(public_user_id, supabase_client, logger):
 
         # Replace missing values (NaN) with "" as NaN is not acceptable in final JSON output
         df.replace({np.nan: ""}, inplace = True)
+
+        # Convert "dumb" quotes to HTML "curly" quotes
+        text_vars = ["experiment_group", "experiment_sub_group", "experiment", "observation_prompt", "observation"]
+        for text_var in text_vars:
+            df[text_var] = df[text_var].apply(lambda x: smartypants.smartypants(x))
 
         ## CASE 3: User exists with assigned experiments (and potentially observations)
         # Outcome: Return dict_response with all of the experiments and observations for the user
