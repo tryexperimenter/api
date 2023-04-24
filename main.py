@@ -21,7 +21,7 @@ from data_processing_functions import get_experimenter_log_helper
 from logging_functions import get_logger
 from json_response_processing_functions import create_json_response
 from analytics_functions import log_api_call
-from supabase_db_functions import create_supabase_client
+from postgresql_db_functions import create_db_connection
 
 # %%% Set up logging
 if 'logger' not in locals():
@@ -46,16 +46,15 @@ env_vars = {
 # Convert string environment variables to JSON
 environment=env_vars.get('ENVIRONMENT')
 honeybadger_api_key = env_vars.get('HONEYBADGER_API_KEY')
-supabase_url: str = env_vars.get("SUPABASE_URL")
-supabase_public_api_key: str = env_vars.get("SUPABASE_PUBLIC_API_KEY")
+db_connection_parameters: dict = json.loads(env_vars.get("PROD_DB_CONNECTION_PARAMETERS"))
+
+df_users = sample_postgresql_uses(db_connection_parameters=db_connection_parameters, logger=logger)
 
 # %%% Create service accounts
 logger.info("Configure Honeybadger monitoring")
 honeybadger.configure(
     api_key=honeybadger_api_key,
     environment=environment)
-logger.info("Creating Supabase Client")
-supabase_client = create_supabase_client(supabase_url=supabase_url, supabase_public_api_key=supabase_public_api_key, logger=logger)
 
 
 
@@ -120,16 +119,21 @@ async def get_log(id: int) -> dict:
 @app.get("/v1/experimenter-log/")
 async def get_experimenter_log(public_user_id: str):
 
+    db_conn = None
+
     try:
+
+        # Get database connection
+        db_conn = create_db_connection(db_connection_parameters, logger)
 
         # Log API call
         endpoint = f"/v1/experimenter-log/?public_user_id={public_user_id}"
         logger.info(f"Endpoint called: {endpoint}")
-        log_api_call(environment=environment, endpoint=endpoint, supabase_client=supabase_client, logger=logger)
+        log_api_call(environment=environment, endpoint=endpoint, db_conn=db_conn, logger=logger)
 
         # Get experimenter log data
         logger.info("Calling get_experimenter_log_helper()")
-        dict_response = get_experimenter_log_helper(public_user_id = public_user_id, supabase_client = supabase_client, logger = logger)
+        dict_response = get_experimenter_log_helper(public_user_id = public_user_id, db_connection_parameters = db_connection_parameters, logger = logger)
 
         # Format response as JSON
         logger.info("Calling create_json_response()")
@@ -147,6 +151,10 @@ async def get_experimenter_log(public_user_id: str):
         honeybadger.notify(error_class=error_class, error_message=error_message)
 
         return {"error": "True", "end_user_error_message": f"Error collecting Experimenter Log data for public_user_id: {public_user_id}"}
+    
+    finally:
+        if db_conn is not None:
+            db_conn.close()
 
 # %% Run app
 if __name__ == "__main__":

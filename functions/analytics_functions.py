@@ -3,12 +3,14 @@ from google_sheets_functions import append_data_to_google_sheet
 from honeybadger import honeybadger
 import traceback
 
-def log_api_call(environment, endpoint, supabase_client, logger):
+def log_api_call(environment, endpoint, db_conn, logger):
 
     try:
 
-        response = supabase_client.table("api_calls").insert({"environment": environment, "endpoint": endpoint}).execute()
-        logger.info(f"API call logged: {response.data}")
+        with db_conn.cursor() as cursor:
+            cursor.execute('INSERT INTO api_calls (environment, endpoint) VALUES (%s, %s)', (environment, endpoint))
+
+        logger.info(f"API call logged: environment: {environment}, endpoint: {endpoint}")
         
     # If there is an error, log it
     # Note that we are not raising an error because we don't want to interrupt the API call

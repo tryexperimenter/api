@@ -6,16 +6,16 @@ import pytz
 from honeybadger import honeybadger
 import traceback
 import smartypants
-from supabase_db_functions import supabase_get_experimenter_log_data
+from postgresql_db_functions import db_get_experimenter_log_data
 
 
-def get_experimenter_log_helper(public_user_id, supabase_client, logger):
+def get_experimenter_log_helper(public_user_id, db_connection_parameters, logger):
 
     try:
 
         ## Pull data from Supabase
         logger.info("Started pulling data from Supabase")
-        df = supabase_get_experimenter_log_data(public_user_id = public_user_id, supabase_client=supabase_client, logger=logger)
+        df = db_get_experimenter_log_data(public_user_id = public_user_id, db_connection_parameters=db_connection_parameters, logger=logger)
         logger.info("Finished pulling data from Supabase")
 
         ## CASE 1: Public_user_id was not found / not active
