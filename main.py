@@ -133,7 +133,7 @@ async def get_experimenter_log(public_user_id: str):
 
         # Get experimenter log data
         logger.info("Calling get_experimenter_log_helper()")
-        dict_response = get_experimenter_log_helper(public_user_id = public_user_id, db_connection_parameters = db_connection_parameters, logger = logger)
+        dict_response = get_experimenter_log_helper(public_user_id = public_user_id, db_conn = db_conn, logger = logger)
 
         # Format response as JSON
         logger.info("Calling create_json_response()")
