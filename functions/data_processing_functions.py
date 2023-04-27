@@ -13,10 +13,10 @@ def get_experimenter_log_helper(public_user_id, db_conn, logger):
 
     try:
 
-        ## Pull data from Supabase
-        logger.info("Started pulling data from Supabase")
+        ## Pull data from database
+        logger.info("Started pulling data from database")
         df = db_get_experimenter_log_data(public_user_id = public_user_id, db_conn=db_conn, logger=logger)
-        logger.info("Finished pulling data from Supabase")
+        logger.info("Finished pulling data from database")
 
         ## CASE 1: Public_user_id was not found / not active
         # Test: No rows in df

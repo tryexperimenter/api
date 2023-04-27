@@ -22,6 +22,7 @@ from logging_functions import get_logger
 from json_response_processing_functions import create_json_response
 from analytics_functions import log_api_call
 from postgresql_db_functions import create_db_connection
+from standard_processes_functions import schedule_messages
 
 # %%% Set up logging
 if 'logger' not in locals():
@@ -47,8 +48,9 @@ env_vars = {
 environment=env_vars.get('ENVIRONMENT')
 honeybadger_api_key = env_vars.get('HONEYBADGER_API_KEY')
 db_connection_parameters: dict = json.loads(env_vars.get("PROD_DB_CONNECTION_PARAMETERS"))
+sendgrid_api_key = env_vars.get('SENDGRID_API_KEY')
+short_io_api_key = env_vars.get('SHORT_IO_API_KEY')
 
-df_users = sample_postgresql_uses(db_connection_parameters=db_connection_parameters, logger=logger)
 
 # %%% Create service accounts
 logger.info("Configure Honeybadger monitoring")
@@ -115,6 +117,52 @@ async def get_log(id: int) -> dict:
     logger.info(f"Endpoint called: /user/?id={id}")
 
     return { "message": "The user id is: " + str(id)}
+
+@app.get("/v1/schedule_messages/")
+async def api_schedule_messages(auth_code: str):
+
+    if auth_code == "rFLrsTdXGcA8VyoyaBMY-L*mMe@enU": 
+
+        db_conn = None
+
+        try:
+
+            # Get database connection
+            db_conn = create_db_connection(db_connection_parameters, logger)
+
+            # Log API call
+            endpoint = f"/v1/schedule_messages/?auth_code={auth_code}"
+            logger.info(f"Endpoint called: {endpoint}")
+            log_api_call(environment=environment, endpoint=endpoint, db_conn=db_conn, logger = logger)
+
+            # Schedule messages
+            logger.info("Calling schedule_messages()")
+            dict_response = schedule_messages(db_conn = db_conn, sendgrid_api_key = sendgrid_api_key, short_io_api_key = short_io_api_key, logger = logger)
+
+            # TODO: If we want to return something: Format response as JSON
+            logger.info("Calling create_json_response()")
+            json_response = create_json_response(dict_response = dict_response, logger = logger)
+
+            logger.info("Returning json_response")
+            return json_response
+        
+        except Exception as e:
+            
+            error_class = f"API | /v1/schedule_messages/?auth_code={auth_code}"
+            error_message = f"Error with /v1/schedule_messages/?auth_code={auth_code}; Error: {e}"
+            logger.error(error_message)
+            logger.error(traceback.format_exc()) # provide the full traceback of everything that caused the error
+            honeybadger.notify(error_class=error_class, error_message=error_message)
+
+            return {"error": "True", "error_message": f"Error running /v1/schedule_messages/?auth_code={auth_code}. Check logs for more info."}
+        
+        finally:
+            if db_conn is not None:
+                db_conn.close()
+
+    else:
+
+        return {"error": "True", "message": f"authorization code incorrect: {auth_code}"}
 
 @app.get("/v1/experimenter-log/")
 async def get_experimenter_log(public_user_id: str):

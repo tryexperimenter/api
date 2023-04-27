@@ -78,7 +78,7 @@ import traceback
 # dfs = sample_postgresql_uses(db_connection_parameters)
 
 
-# Create Database Connection
+## Create Database Connection
 def create_db_connection(db_connection_parameters, logger):
 
     try: 
@@ -99,7 +99,7 @@ def create_db_connection(db_connection_parameters, logger):
         honeybadger.notify(error_class=error_class, error_message=error_message)        
         raise Exception(error_message)
 
-# Get Experimenter Log Data
+## Get Experimenter Log Data
 def db_get_experimenter_log_data(public_user_id: str, db_conn, logger):
 
     try:
@@ -120,6 +120,28 @@ def db_get_experimenter_log_data(public_user_id: str, db_conn, logger):
 
         error_class = f"API | db_get_experimenter_log_data()"
         error_message = f"db_get_experimenter_log_data() failed; Error: {e}"
+        logger.error(error_message)
+        logger.error(traceback.format_exc()) # provide the full traceback of everything that caused the error
+        honeybadger.notify(error_class=error_class, error_message=error_message)        
+        raise Exception(error_message)
+
+## Return a dataframe from a SQL statement
+def db_return_df_from_arbitrary_sql_statement(sql_statement, db_conn, logger):
+
+    try:
+
+        with db_conn.cursor() as cursor:
+
+            cursor.execute(sql_statement)
+
+            data = cursor.fetchall()
+            col_names = [desc[0] for desc in cursor.description]
+            return pd.DataFrame(data, columns=col_names)
+
+    except Exception as e:
+
+        error_class = f"API | db_return_df_from_arbitrary_sql_statement()"
+        error_message = f"db_return_df_from_arbitrary_sql_statement() failed; Error: {e}, SQL Statement: {sql_statement}"
         logger.error(error_message)
         logger.error(traceback.format_exc()) # provide the full traceback of everything that caused the error
         honeybadger.notify(error_class=error_class, error_message=error_message)        
