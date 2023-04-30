@@ -9,7 +9,7 @@ import smartypants
 from sendgrid import SendGridAPIClient
 
 # Custom imports
-from postgresql_db_functions import db_return_df_from_arbitrary_sql_statement
+from postgresql_db_functions import execute_sql_return_df, executemany_sql_return_status_message
 from short_io_functions import generate_short_url
 from sendgrid_functions import send_email
 
@@ -20,6 +20,7 @@ def schedule_messages(db_conn, sendgrid_api_key, short_io_api_key, logger) -> di
     try:
 
         ## Identify messages to schedule
+        logger.info("Identify messages to schedule")
 
         # Define sql query
         sql_statement = """
@@ -50,10 +51,9 @@ WHERE
 	sg.id = sgat.sub_group_id AND -- pull on sub_groups info (sub_group_name, group_id)
 	g.id = sg.group_id AND -- pull on groups info (group_name)
 	u.id = sga.user_id; -- pull on user info (email, first_name)"""
-        logger.info(f"Messages to Schedule SQL Statement: {sql_statement}")
 
         # Pull data from database
-        df_messages = db_return_df_from_arbitrary_sql_statement(sql_statement = sql_statement, db_conn = db_conn, logger = logger)
+        df_messages = execute_sql_return_df(sql_statement = sql_statement, db_conn = db_conn, logger = logger)
 
         # If no messages to schedule, return empty dictionary
         if len(df_messages) == 0:
@@ -64,6 +64,7 @@ WHERE
         df_messages['status_note'] = ''
 
         ## Identify experiment prompts to include in messages
+        logger.info("Identify experiment prompts to include in messages")
 
         # Define sql query (pull experiment prompts for each sub_group_id associated with a message we want to schedule)
         sub_group_ids = df_messages['sub_group_id'].unique()
@@ -75,10 +76,10 @@ SELECT
 	display_order
 FROM experiment_prompts
 WHERE sub_group_id IN ({sub_group_ids});"""
-        logger.info(f"Experiment Prompts SQL Statement: {sql_statement}")
+        logger.info(f"sub_group_ids: {sub_group_ids}")
 
         # Pull data from database
-        df_experiment_prompts = db_return_df_from_arbitrary_sql_statement(sql_statement = sql_statement, db_conn = db_conn, logger = logger)        
+        df_experiment_prompts = execute_sql_return_df(sql_statement = sql_statement, db_conn = db_conn, logger = logger)        
 
         # Create dictionary of experiment prompts (each sub_group_id is a key, and the value is an ordered list of experiment prompts)
         # Example
@@ -128,7 +129,7 @@ WHERE sub_group_id IN ({sub_group_ids});"""
         # Note that you'll need to enable all of the actions you want to take in SendGrid's UI when you create the API key (e.g., scheduledule sends)
         sendgrid_client = SendGridAPIClient(sendgrid_api_key)
 
-        ## Customize email_subject / email_body (fill in variables) and schedule email
+        ## Fill in variables in email_subject, email_body and schedule email
         logger.info(f"""Filling in variables in email_subject, email_body and scheduling emails""")
         for index, (
             sub_group_id,
@@ -139,6 +140,7 @@ WHERE sub_group_id IN ({sub_group_ids});"""
             sub_group_name,
             email_subject,
             email_body,
+            action_datetime,
             url_record_observations, 
             url_record_observations_prior_week,
             url_experimenter_log,
@@ -152,10 +154,17 @@ WHERE sub_group_id IN ({sub_group_ids});"""
             df_messages['sub_group_name'],
             df_messages['email_subject'],
             df_messages['email_body'],
+            df_messages['action_datetime'],
             df_messages['url_record_observations'],
             df_messages['url_record_observations_prior_week'],
             df_messages['url_experimenter_log'],
         )):
+
+            logger.info(f"Scheduling email for user_email: {user_email}; sub_group_action_id: {sub_group_action_id}")
+
+            # Initialize status
+            status = ''
+            status_note = '' # If there's an error, we'll add a note here
 
             # Replace '' with 'ERROR!!!' for each variable we want to use in email_subject, email_body so that we can catch variable replacements that will just be empty strings (e.g., "Hey {first_name}!" gets turned into  "Hey !" if first_name is ''))})
             if first_name == '': first_name = 'ERROR!!!'
@@ -167,18 +176,21 @@ WHERE sub_group_id IN ({sub_group_ids});"""
 
             # Create experiment_prompts list (referenced in email_body as {experiment_prompts[0]}, {experiment_prompts[1]}, etc.)
             try:
+
                 experiment_prompts = dict_experiment_prompts[sub_group_id]
+
             except KeyError: # If there are no experiment prompts for this sub_group_id (e.g., it's a rest week)
+
                 logger.info(f"""No experiment prompts for sub_group_id {sub_group_id}""")
 
-            # Fill in variables
+            # Fill in variables in email_subject, email_body
             try:
 
                 email_subject = email_subject.format(**locals())
-                df_messages['email_subject'][index] = email_subject
+                df_messages.loc[index, ['email_subject']] = email_subject
 
                 email_body = email_body.format(**locals())
-                df_messages['email_body'][index] = email_body
+                df_messages.loc[index, ['email_body']] = email_body
 
                 if "ERROR!!!" in email_subject: raise ValueError(f"""email_subject: we attempted to replace a variable with an empty string""")
 
@@ -192,32 +204,83 @@ WHERE sub_group_id IN ({sub_group_ids});"""
                 logger.error(traceback.format_exc())
 
                 # Update status, status_note for error
-                df_messages['status'] = 'message_failed_to_schedule'
-                df_messages['status_note'] = error_message
+                status = 'message_failed_to_schedule'
+                status_note = error_message
 
             # Schedule email
             try:
 
-                dict_response = send_email(
-                    from_email = 'experiments@tryexperimenter.com', 
-                    from_display_name = 'Experimenter',
-                    to_email = user_email, 
-                    subject = email_subject, 
-                    message_text_html = email_body, 
-                    add_unsubscribe_link = True,
-                    sendgrid_client = sendgrid_client, 
-                    logger = logger
-                    )
+                if (status == ''):
+
+                    dict_response = send_email(
+                        datetime_utc_to_send = action_datetime,
+                        from_email = 'experiments@tryexperimenter.com', 
+                        from_display_name = 'Experimenter',
+                        to_email = user_email, 
+                        subject = email_subject, 
+                        message_text_html = email_body, 
+                        add_unsubscribe_link = True,
+                        sendgrid_client = sendgrid_client, 
+                        logger = logger)
                 
-                # TODO: Figure out what we want to store in database, store in df_messages
-                # We get back 'batch_id', 'status_code', 'datetime_created'
+                    # TODO: Figure out what we want to store in database, store in df_messages
+                    # Currently we get back dict_response with 'batch_id', 'status_code', 'datetime_created'. 
+                    # Note that we need to 
+                    logger.info(f"dict_response: {dict_response}") 
+                    # Currently commented out because then our SELECT statement to get df_messages will return nothing because status = 'message_scheduled' is excluded
+                    # status = 'message_scheduled'
 
             except Exception as e:
 
-                # TODO: Fill out
+                # Log error
+                error_message = f"schedule_messages() error scheduling email for sub_group_action_id = {sub_group_action_id}; Error: {e}"
+                logger.error(error_message)
+                logger.error(traceback.format_exc())
 
-        # TODO: Update sub_group_actions and sub_group_action_emails
+                # Update status, status_note for error
+                status = 'message_failed_to_schedule'
+                status_note = error_message
+
+            # Update df_messages for outcome of attempt to schedule email
+            df_messages.loc[index, ['status']] = status
+            df_messages.loc[index, ['status_note']] = status_note
+
+
+        ## Update sub_group_actions table
+        logger.info(f"Update sub_group_actions table")
+
+        try:
+
+            tuples = [tuple(x) for x in df_messages[['status', 'sub_group_action_id']].values]
+
+            sql_statement = 'UPDATE sub_group_actions SET status = %s WHERE id = %s;'
+
+            response = executemany_sql_return_status_message(sql_statement, tuples, db_conn, logger)
+
+            logger.info(f"Update sub_group_actions table response: {response}")
+
+        except Exception as e:
+
+            error_message = f"schedule_messages() error updating sub_group_actions table; Error: {e}"
+            logger.error(error_message)
+            logger.error(traceback.format_exc())
+
+
+        ## TODO: Update sub_group_action_emails table
+        logger.info(f"Update sub_group_action_emails table")
+
+        # try:
+
+        # except Exception as e:
                 
+        #     # Log error
+        #     error_message = f"schedule_messages() error updating sub_group_action_emails table; Error: {e}"
+        #     logger.error(error_message)
+        #     logger.error(traceback.format_exc())
+                
+        ## TODO: Send email to experiments@tryexperimenter.com with summary of what happened
+        # Number of emails scheduled, failed to schedule, etc.
+
         ## Return df as dictionary
         df = df_messages
         df = df.drop(columns = ['action_datetime'])

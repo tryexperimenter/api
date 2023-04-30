@@ -20,10 +20,9 @@ def send_email(
     from email_validator import validate_email #https://pypi.org/project/email-validator/
     from sendgrid.helpers.mail import Mail, To, From, Subject, Bcc, Content, SendAt, BatchId
     from datetime import datetime, timezone
+
     #Custom functions
-    from message_validation_functions import (
-        validate_text,
-    )
+    from message_validation_functions import validate_text
 
     # Validate text is okay to send to a user (not empty, no {variable_x} that haven't been replaced, etc.)
     validate_text(text=subject, logger=logger)
@@ -83,12 +82,12 @@ def send_email(
         message.send_at = SendAt(send_at_unix_timestamp)
     
     # Send / schedule email
-    response = sendgrid_client.send(message)
-    dict_response['datetime_created'] = datetime.utcnow()
-    dict_response['status_code'] = response.status_code
+    # response = sendgrid_client.send(message)
+    # dict_response['datetime_created'] = datetime.utcnow()
+    # dict_response['status_code'] = response.status_code
 
     # Log response
-    logger.info(f'''SendGrid API response status_code: {dict_response['status_code']}''')
+    # logger.info(f'''SendGrid API response status_code: {dict_response['status_code']}''')
 
     return dict_response
 

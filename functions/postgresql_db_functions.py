@@ -90,6 +90,7 @@ def create_db_connection(db_connection_parameters, logger):
             password=db_connection_parameters['password'],
             port=db_connection_parameters['port'])
 
+
     except Exception as e:
 
         error_class = f"API | create_db_connection()"
@@ -98,6 +99,7 @@ def create_db_connection(db_connection_parameters, logger):
         logger.error(traceback.format_exc()) # provide the full traceback of everything that caused the error
         honeybadger.notify(error_class=error_class, error_message=error_message)        
         raise Exception(error_message)
+
 
 ## Get Experimenter Log Data
 def db_get_experimenter_log_data(public_user_id: str, db_conn, logger):
@@ -110,11 +112,14 @@ def db_get_experimenter_log_data(public_user_id: str, db_conn, logger):
             # Case 2: User has no experiments -- returns one row with just user's info
             # Case 3: User has experiments -- returns rows for every experiment / observation prompt combination
             # Case 4: User has experiments and has observations -- returns rows for every experiment / observation prompt combination with observation column filled out
+
             cursor.callproc('get_experimenter_log_data', [public_user_id])
 
             data = cursor.fetchall()
             col_names = [desc[0] for desc in cursor.description]
             return pd.DataFrame(data, columns=col_names)
+        
+
 
     except Exception as e:
 
@@ -125,8 +130,9 @@ def db_get_experimenter_log_data(public_user_id: str, db_conn, logger):
         honeybadger.notify(error_class=error_class, error_message=error_message)        
         raise Exception(error_message)
 
-## Return a dataframe from a SQL statement
-def db_return_df_from_arbitrary_sql_statement(sql_statement, db_conn, logger):
+
+## Excute a SQL statement, return dataframe
+def execute_sql_return_df(sql_statement, db_conn, logger):
 
     try:
 
@@ -134,16 +140,66 @@ def db_return_df_from_arbitrary_sql_statement(sql_statement, db_conn, logger):
 
             cursor.execute(sql_statement)
 
+            db_conn.commit() # note that any other transactions using this db_conn will be committed as well
+
             data = cursor.fetchall()
             col_names = [desc[0] for desc in cursor.description]
             return pd.DataFrame(data, columns=col_names)
 
     except Exception as e:
 
-        error_class = f"API | db_return_df_from_arbitrary_sql_statement()"
-        error_message = f"db_return_df_from_arbitrary_sql_statement() failed; Error: {e}, SQL Statement: {sql_statement}"
+        error_class = f"API | execute_sql_return_df()"
+        error_message = f"execute_sql_return_df() failed; Error: {e}, SQL Statement: {sql_statement}"
         logger.error(error_message)
         logger.error(traceback.format_exc()) # provide the full traceback of everything that caused the error
         honeybadger.notify(error_class=error_class, error_message=error_message)        
         raise Exception(error_message)
 
+## Excute a SQL statement, return status message (no data returned)
+def execute_sql_return_status_message(sql_statement, db_conn, logger):
+
+    try:
+
+        with db_conn.cursor() as cursor:
+
+            cursor.execute(sql_statement)
+            
+            db_conn.commit() # note that any other transactions using this db_conn will be committed as well
+
+            return cursor.statusmessage
+
+    except Exception as e:
+
+        error_class = f"API | execute_sql_return_status_message()"
+        error_message = f"execute_sql_return_status_message() failed; Error: {e}, SQL Statement: {sql_statement}"
+        logger.error(error_message)
+        logger.error(traceback.format_exc()) # provide the full traceback of everything that caused the error
+        honeybadger.notify(error_class=error_class, error_message=error_message)        
+        raise Exception(error_message)
+
+
+## Excute a SQL statement using execute man, return status message (no data returned)
+def executemany_sql_return_status_message(sql_statement, tuples, db_conn, logger):
+
+    # Example:
+    # tuples = [tuple(x) for x in df_messages[['status', 'sub_group_action_id']].values]
+    # sql_statement = 'UPDATE sub_group_actions SET status = %s WHERE id = %s;'
+
+    try:
+
+        with db_conn.cursor() as cursor:
+
+            cursor.executemany(sql_statement, tuples)
+
+            db_conn.commit() # note that any other transactions using this db_conn will be committed as well
+
+            return cursor.statusmessage
+
+    except Exception as e:
+
+        error_class = f"API | execute_sql_return_status_message()"
+        error_message = f"execute_sql_return_status_message() failed; Error: {e}, SQL Statement: {sql_statement}"
+        logger.error(error_message)
+        logger.error(traceback.format_exc()) # provide the full traceback of everything that caused the error
+        honeybadger.notify(error_class=error_class, error_message=error_message)        
+        raise Exception(error_message)
