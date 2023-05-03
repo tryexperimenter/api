@@ -60,6 +60,10 @@ WHERE
             logger.info("No messages to schedule")
             return {"message": "No messages to schedule"}
 
+        # Select the sender email address
+        df_messages['sender_email'] = 'experiments@tryexperimenter.com'
+        df_messages['sender_display_name'] = 'Experimenter'
+
         # Initialize "status_note" column to record why a message failed to schedule
         df_messages['status_note'] = ''
 
@@ -134,6 +138,8 @@ WHERE sub_group_id IN ({sub_group_ids});"""
         for index, (
             sub_group_id,
             sub_group_action_id,
+            sender_email,
+            sender_display_name,
             user_email,
             first_name,
             group_name,
@@ -148,6 +154,8 @@ WHERE sub_group_id IN ({sub_group_ids});"""
         enumerate(zip(
             df_messages['sub_group_id'],
             df_messages['sub_group_action_id'],
+            df_messages['sender_email'],
+            df_messages['sender_display_name'],
             df_messages['user_email'],
             df_messages['first_name'],
             df_messages['group_name'],
@@ -215,8 +223,8 @@ WHERE sub_group_id IN ({sub_group_ids});"""
                     # Schedule email
                     dict_response = send_email(
                         datetime_utc_to_send = action_datetime,
-                        from_email = 'experiments@tryexperimenter.com', 
-                        from_display_name = 'Experimenter',
+                        from_email = sender_email, 
+                        from_display_name = sender_display_name,
                         to_email = user_email, 
                         subject = email_subject, 
                         message_text_html = email_body, 
@@ -227,6 +235,7 @@ WHERE sub_group_id IN ({sub_group_ids});"""
                     # Update df_messages for outcome of attempt to schedule email
                     if dict_response['message_successfully_processed'] == True:
                         df_messages.loc[index, ['status']] = 'message_scheduled'
+                        df_messages.loc[index, ['enqueued_datetime']] = dict_response['enqueued_datetime']
                         df_messages.loc[index, ['batch_id']] = dict_response['batch_id']
                         df_messages.loc[index, ['x_message_id']] = dict_response['x_message_id']
                         
@@ -266,26 +275,58 @@ WHERE sub_group_id IN ({sub_group_ids});"""
             logger.error(traceback.format_exc())
 
 
-        ## TODO: Update sub_group_action_emails table
+        ## Update sub_group_action_emails table
         logger.info(f"Update sub_group_action_emails table")
 
-        # try:
+        try:
 
-        # except Exception as e:
+            # Only add rows for messages that were successfully scheduled
+            df_scheduled_messages = df_messages[df_messages['status'] == 'message_scheduled']
+
+            tuples = [tuple(x) for x in df_scheduled_messages[[
+                'sub_group_action_id',
+                'status',
+                'x_message_id',
+                'batch_id',
+                'sender_email',
+                'user_email',
+                'email_subject',
+                'email_body',
+                'enqueued_datetime',
+                'action_datetime']].values]
+
+            sql_statement = '''INSERT INTO sub_group_action_emails (
+sub_group_action_id, 
+status, 
+twilio_x_message_id, 
+twilio_batch_id, 
+sender, 
+recipient, 
+email_subject, 
+email_body, 
+enqueued_datetime, 
+scheduled_datetime)
+VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s);'''
+
+            response = executemany_sql_return_status_message(sql_statement, tuples, db_conn, logger)
+
+            logger.info(f"Update sub_group_action_emails table response: {response}")
+
+        except Exception as e:
                 
-        #     # Log error
-        #     error_message = f"schedule_messages() error updating sub_group_action_emails table; Error: {e}"
-        #     logger.error(error_message)
-        #     logger.error(traceback.format_exc())
+            # Log error
+            error_message = f"schedule_messages() error updating sub_group_action_emails table; Error: {e}"
+            logger.error(error_message)
+            logger.error(traceback.format_exc())
                 
         ## TODO: Send email to experiments@tryexperimenter.com with summary of what happened
         # Number of emails scheduled, failed to schedule, etc.
 
         ## Return df as dictionary
         df = df_messages
-        df = df.drop(columns = ['action_datetime'])
-        # UNCOMMENT # exec(f"""if "ERROR!!!"
-        # CREATE TRY / EXCEPT FOR IF WE CAN'T REPLACE A VARIABLE / THERE IS AN ERROR... AND JUST MAKE A FLAG ON DATASET AND WE SEND AN ERROR
+        df = df.drop(columns = ['action_datetime', 'enqueued_datetime'])
+        # TODO: UNCOMMENT # exec(f"""if "ERROR!!!"
+        # TODO: CREATE TRY / EXCEPT FOR IF WE CAN'T REPLACE A VARIABLE / THERE IS AN ERROR... AND JUST MAKE A FLAG ON DATASET AND WE SEND AN ERROR
         return df.to_dict(orient='records')
 
     except Exception as e:

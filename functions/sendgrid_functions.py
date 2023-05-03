@@ -45,7 +45,7 @@
 
 # # Cancel scheduled email
 # cancel_scheduled_emails_for_batch_id(
-#     batch_id = 'NGJkNWU0OTctZTllNy0xMWVkLTg2NjAtNTZmYTA3MDc2NTlkLTU0MmY2ZDZiZA',
+#     batch_id = 'ZDY4YmE2NjYtZTlmMy0xMWVkLThjMzctM2UzN2YwYzljNzIzLTI1YTcyNTUyYQ',
 #     sendgrid_client = sendgrid_client,
 #     logger = logger)
 
@@ -137,7 +137,7 @@ def send_email(
         # logger.info(response.headers)
 
         status_code = response.status_code
-        dict_response['datetime_created'] = datetime.utcnow()
+        dict_response['enqueued_datetime'] = datetime.utcnow()
         
     
 
