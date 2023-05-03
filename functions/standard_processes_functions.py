@@ -210,8 +210,9 @@ WHERE sub_group_id IN ({sub_group_ids});"""
             # Schedule email
             try:
 
-                if (status == ''):
+                if (status == ''): # If there was no error filling in email_subject, email_body 
 
+                    # Schedule email
                     dict_response = send_email(
                         datetime_utc_to_send = action_datetime,
                         from_email = 'experiments@tryexperimenter.com', 
@@ -222,13 +223,16 @@ WHERE sub_group_id IN ({sub_group_ids});"""
                         add_unsubscribe_link = True,
                         sendgrid_client = sendgrid_client, 
                         logger = logger)
-                
-                    # TODO: Figure out what we want to store in database, store in df_messages
-                    # Currently we get back dict_response with 'batch_id', 'status_code', 'datetime_created'. 
-                    # Note that we need to 
-                    logger.info(f"dict_response: {dict_response}") 
-                    # Currently commented out because then our SELECT statement to get df_messages will return nothing because status = 'message_scheduled' is excluded
-                    # status = 'message_scheduled'
+                    
+                    # Update df_messages for outcome of attempt to schedule email
+                    if dict_response['message_successfully_processed'] == True:
+                        df_messages.loc[index, ['status']] = 'message_scheduled'
+                        df_messages.loc[index, ['batch_id']] = dict_response['batch_id']
+                        df_messages.loc[index, ['x_message_id']] = dict_response['x_message_id']
+                        
+                    else:
+                        df_messages.loc[index, ['status']] = 'message_failed_to_schedule'
+                        df_messages.loc[index, ['status_note']] = dict_response['error_message']
 
             except Exception as e:
 
@@ -237,13 +241,9 @@ WHERE sub_group_id IN ({sub_group_ids});"""
                 logger.error(error_message)
                 logger.error(traceback.format_exc())
 
-                # Update status, status_note for error
-                status = 'message_failed_to_schedule'
-                status_note = error_message
-
-            # Update df_messages for outcome of attempt to schedule email
-            df_messages.loc[index, ['status']] = status
-            df_messages.loc[index, ['status_note']] = status_note
+                # Update df_messages for outcome of attempt to schedule email
+                df_messages.loc[index, ['status']] = 'message_failed_to_schedule'
+                df_messages.loc[index, ['status_note']] = error_message
 
 
         ## Update sub_group_actions table
