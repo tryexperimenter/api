@@ -1,11 +1,11 @@
-import pandas as pd
-import numpy as np
-from time import sleep
-from datetime import datetime
-import pytz
+# import pandas as pd
+# import numpy as np
+# from datetime import datetime
+# import pytz
+# import smartypants
+# from time import sleep
 from honeybadger import honeybadger
 import traceback
-import smartypants
 from sendgrid import SendGridAPIClient
 
 # Custom imports
@@ -170,9 +170,8 @@ WHERE sub_group_id IN ({sub_group_ids});"""
 
             logger.info(f"Scheduling email for user_email: {user_email}; sub_group_action_id: {sub_group_action_id}")
 
-            # Initialize status
-            status = ''
-            status_note = '' # If there's an error, we'll add a note here
+            # Initialize email_ready_to_schedule
+            email_ready_to_schedule = False
 
             # Replace '' with 'ERROR!!!' for each variable we want to use in email_subject, email_body so that we can catch variable replacements that will just be empty strings (e.g., "Hey {first_name}!" gets turned into  "Hey !" if first_name is ''))})
             if first_name == '': first_name = 'ERROR!!!'
@@ -182,7 +181,7 @@ WHERE sub_group_id IN ({sub_group_ids});"""
             if url_record_observations_prior_week == '': url_record_observations_prior_week = 'ERROR!!!'
             if url_experimenter_log == '': url_experimenter_log = 'ERROR!!!'
 
-            # Create experiment_prompts list (referenced in email_body as {experiment_prompts[0]}, {experiment_prompts[1]}, etc.)
+            # Create experiment_prompts list (referenced in email_body as {experiment_prompts[0]}, {experiment_prompts[1]}, etc. and filled in below using email_body = email_body.format(**locals()))
             try:
 
                 experiment_prompts = dict_experiment_prompts[sub_group_id]
@@ -204,6 +203,9 @@ WHERE sub_group_id IN ({sub_group_ids});"""
 
                 if "ERROR!!!" in email_body: raise ValueError(f"""email_body: we attempted to replace a variable with an empty string""")
             
+                # If we made it this far, email is ready to schedule
+                email_ready_to_schedule = True
+
             except Exception as e:
 
                 # Log error
@@ -212,13 +214,13 @@ WHERE sub_group_id IN ({sub_group_ids});"""
                 logger.error(traceback.format_exc())
 
                 # Update status, status_note for error
-                status = 'message_failed_to_schedule'
-                status_note = error_message
+                df_messages.loc[index, ['status']] = 'message_failed_to_schedule'
+                df_messages.loc[index, ['status_note']] = error_message
 
             # Schedule email
             try:
 
-                if (status == ''): # If there was no error filling in email_subject, email_body 
+                if email_ready_to_schedule: # If there was no error filling in email_subject, email_body 
 
                     # Schedule email
                     dict_response = send_email(
@@ -241,7 +243,7 @@ WHERE sub_group_id IN ({sub_group_ids});"""
                         
                     else:
                         df_messages.loc[index, ['status']] = 'message_failed_to_schedule'
-                        df_messages.loc[index, ['status_note']] = dict_response['error_message']
+                        df_messages.loc[index, ['status_note']] = dict_response['error_message']                    
 
             except Exception as e:
 
@@ -322,11 +324,10 @@ VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s);'''
         ## TODO: Send email to experiments@tryexperimenter.com with summary of what happened
         # Number of emails scheduled, failed to schedule, etc.
 
+        ## TODO: Determine if we want to return a dictionary of messages we sent
         ## Return df as dictionary
         df = df_messages
         df = df.drop(columns = ['action_datetime', 'enqueued_datetime'])
-        # TODO: UNCOMMENT # exec(f"""if "ERROR!!!"
-        # TODO: CREATE TRY / EXCEPT FOR IF WE CAN'T REPLACE A VARIABLE / THERE IS AN ERROR... AND JUST MAKE A FLAG ON DATASET AND WE SEND AN ERROR
         return df.to_dict(orient='records')
 
     except Exception as e:
