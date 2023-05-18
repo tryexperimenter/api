@@ -34,7 +34,7 @@
 #     datetime_utc_to_send =  datetime_utc_to_send,
 #     from_email = 'experiments@tryexperimenter.com', 
 #     from_display_name = 'Experimenter',
-#     to_email = 'tristan@tryexperimenter.com', 
+#     to_email = 'experiments@tryexperimenter.com', 
 #     subject = 'Test', 
 #     message_text_html = "test", 
 #     add_unsubscribe_link = True,
@@ -71,6 +71,8 @@ def send_email(
     #Custom functions
     from message_validation_functions import validate_text
 
+    logger.info("***Sending email using SendGrid***")
+
     # Instantiate response dictionary
     dict_response = {}
 
@@ -86,8 +88,11 @@ def send_email(
     # Validate email address (throws exception if invalid or undeliverable)
     validate_email(to_email, check_deliverability=True)
 
+    # Check that from_email is different from to_email (SendGrid doesn't allow them to be the same)
+    if from_email.lower() == to_email.lower():
+        raise Exception(f"SendGrid does not allow from_email ({from_email}) to be the same as to_email ({to_email})")
+
     # Log what we're doing
-    logger.info("***Sending email using SendGrid***")
     logger.info(f"from_email: {from_email}")
     logger.info(f"from_name: {from_display_name}")
     logger.info(f"to_email: {to_email}")
