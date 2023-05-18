@@ -16,5 +16,6 @@ def create_json_response(dict_response: dict, logger) -> dict:
         error_message = f"Error with create_json_response(); Error: {e}"
         logger.error(error_message)
         logger.error(traceback.format_exc()) # provide the full traceback of everything that caused the error
+        logger.error(f"JSON: {str(dict_response)}")
         honeybadger.notify(error_class=error_class, error_message=error_message)
         raise Exception(error_message)
