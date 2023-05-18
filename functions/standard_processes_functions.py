@@ -14,10 +14,14 @@ from short_io_functions import generate_short_url
 from sendgrid_functions import send_email
 
 
-# Schedule messages to be sent out in the next 48 hours
+# Schedule messages to be sent out in the next 72 hours
 def schedule_messages(db_conn, sendgrid_api_key, short_io_api_key, logger) -> dict:
 
     try:
+
+        ## Create connection to SendGrid (for sending emails)
+        # Note that you'll need to enable all of the actions you want to take in SendGrid's UI when you create the API key (e.g., scheduledule sends)
+        sendgrid_client = SendGridAPIClient(sendgrid_api_key)
 
         ## Identify messages to schedule
         logger.info("Identify messages to schedule")
@@ -55,10 +59,22 @@ WHERE
         # Pull data from database
         df_messages = execute_sql_return_df(sql_statement = sql_statement, db_conn = db_conn, logger = logger)
 
-        # If no messages to schedule, return empty dictionary
+        ## If no messages to schedule, send status email and return message
         if len(df_messages) == 0:
+            
             logger.info("No messages to schedule")
-            return {"message": "No messages to schedule"}
+
+            send_email(
+                from_email = 'experiments@tryexperimenter.com', 
+                from_display_name = 'Experimenter',
+                to_email = 'tristan@tryexperimenter.com', 
+                subject = 'No Messages to Schedule', 
+                message_text_html = 'There were no messages to schedule.', 
+                add_unsubscribe_link = False,
+                sendgrid_client = sendgrid_client, 
+                logger = logger)
+
+            return {"message": "No messages to schedule."}
 
         # Select the sender email address
         df_messages['sender_email'] = 'experiments@tryexperimenter.com'
@@ -128,10 +144,6 @@ WHERE sub_group_id IN ({sub_group_ids});"""
         df_messages['url_experimenter_log'] = df_messages.apply(
             lambda row: f"tryexperimenter.com/{row['url_stub_experimenter_log']}",
             axis=1)
-
-        ## Create connection to SendGrid
-        # Note that you'll need to enable all of the actions you want to take in SendGrid's UI when you create the API key (e.g., scheduledule sends)
-        sendgrid_client = SendGridAPIClient(sendgrid_api_key)
 
         ## Fill in variables in email_subject, email_body and schedule email
         logger.info(f"""Filling in variables in email_subject, email_body and scheduling emails""")
@@ -285,19 +297,21 @@ WHERE sub_group_id IN ({sub_group_ids});"""
             # Only add rows for messages that were successfully scheduled
             df_scheduled_messages = df_messages[df_messages['status'] == 'message_scheduled']
 
-            tuples = [tuple(x) for x in df_scheduled_messages[[
-                'sub_group_action_id',
-                'status',
-                'x_message_id',
-                'batch_id',
-                'sender_email',
-                'user_email',
-                'email_subject',
-                'email_body',
-                'enqueued_datetime',
-                'action_datetime']].values]
+            if len(df_scheduled_messages) > 0:
 
-            sql_statement = '''INSERT INTO sub_group_action_emails (
+                tuples = [tuple(x) for x in df_scheduled_messages[[
+                    'sub_group_action_id',
+                    'status',
+                    'x_message_id',
+                    'batch_id',
+                    'sender_email',
+                    'user_email',
+                    'email_subject',
+                    'email_body',
+                    'enqueued_datetime',
+                    'action_datetime']].values]
+
+                sql_statement = '''INSERT INTO sub_group_action_emails (
 sub_group_action_id, 
 status, 
 twilio_x_message_id, 
@@ -310,9 +324,12 @@ enqueued_datetime,
 scheduled_datetime)
 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s);'''
 
-            response = executemany_sql_return_status_message(sql_statement, tuples, db_conn, logger)
+                response = executemany_sql_return_status_message(sql_statement, tuples, db_conn, logger)
 
-            logger.info(f"Update sub_group_action_emails table response: {response}")
+                logger.info(f"Update sub_group_action_emails table response: {response}")
+            else:
+
+                logger.info(f"No rows to add to sub_group_action_emails table")
 
         except Exception as e:
                 
@@ -321,14 +338,32 @@ VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s);'''
             logger.error(error_message)
             logger.error(traceback.format_exc())
                 
-        ## TODO: Send email to experiments@tryexperimenter.com with summary of what happened
-        # Number of emails scheduled, failed to schedule, etc.
+        ## Send status email update, return outcome of schedule_messages()
+        try:
 
-        ## TODO: Determine if we want to return a dictionary of messages we sent
-        ## Return df as dictionary
-        df = df_messages
-        df = df.drop(columns = ['action_datetime', 'enqueued_datetime'])
-        return df.to_dict(orient='records')
+            # Define status message text
+            status_message_text = f"""{len(df_messages[df_messages['status'] == 'message_scheduled'])} message(s) were scheduled. <br><br> {len(df_messages[df_messages['status'] != 'message_scheduled'])} message(s) failed to schedule."""
+
+            # Send email to experiments@tryexperimenter.com with summary of what happened
+            dict_response = send_email(
+                from_email = 'experiments@tryexperimenter.com', 
+                from_display_name = 'Experimenter',
+                to_email = 'tristan@tryexperimenter.com', 
+                subject = 'Experiment Messages Status Email', 
+                message_text_html = status_message_text, 
+                add_unsubscribe_link = False,
+                sendgrid_client = sendgrid_client, 
+                logger = logger)
+            
+            # Return API response
+            return {"message": status_message_text}
+                
+        except Exception as e:
+
+            # Log error
+            error_message = f"schedule_messages() error recording outcome of schedule_message(); Error: {e}"
+            logger.error(error_message)
+            logger.error(traceback.format_exc())
 
     except Exception as e:
 
