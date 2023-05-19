@@ -5,7 +5,7 @@ import os, sys
 import uvicorn
 import json
 import pandas as pd
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI, APIRouter, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import dotenv_values # pip install python-dotenv
 from datetime import datetime
@@ -119,7 +119,7 @@ async def get_log(id: int) -> dict:
     return { "message": "The user id is: " + str(id)}
 
 @app.get("/v1/schedule_messages/")
-async def api_schedule_messages(auth_code: str):
+async def api_schedule_messages(auth_code: str, background_tasks: BackgroundTasks):
 
     if auth_code == "rFLrsTdXGcA8VyoyaBMY-L*mMe@enU": 
 
@@ -135,16 +135,11 @@ async def api_schedule_messages(auth_code: str):
             logger.info(f"Endpoint called: {endpoint}")
             log_api_call(environment=environment, endpoint=endpoint, db_conn=db_conn, logger = logger)
 
-            # Schedule messages
+            # Schedule messages (call as a background task so that the API call doesn't take too long. more info: https://fastapi.tiangolo.com/tutorial/background-tasks/)
             logger.info("Calling schedule_messages()")
-            dict_response = schedule_messages(db_conn = db_conn, sendgrid_api_key = sendgrid_api_key, short_io_api_key = short_io_api_key, logger = logger)
+            background_tasks.add_task(schedule_messages, db_conn = db_conn, sendgrid_api_key = sendgrid_api_key, short_io_api_key = short_io_api_key, logger = logger)
 
-            # TODO: If we want to return something: Format response as JSON
-            logger.info("Calling create_json_response()")
-            json_response = create_json_response(dict_response = dict_response, logger = logger)
-
-            logger.info("Returning json_response")
-            return json_response
+            return {"message": "schedule_messages() called successfully as a background task"}
         
         except Exception as e:
             
