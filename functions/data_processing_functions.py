@@ -6,12 +6,18 @@ import pytz
 from honeybadger import honeybadger
 import traceback
 import smartypants
-from postgresql_db_functions import db_get_experimenter_log_data
+
+# Custom imports
+from postgresql_db_functions import create_db_connection, db_get_experimenter_log_data
 
 
-def get_experimenter_log_helper(public_user_id, db_conn, logger):
+def get_experimenter_log_helper(public_user_id, db_connection_parameters, logger):
 
     try:
+
+        # Get database connection
+        db_conn = None # initialize db_conn as None so that the finally block doesn't error out if the db_conn variable doesn't exist
+        db_conn = create_db_connection(db_connection_parameters, logger)
 
         ## Pull data from database
         logger.info("Started pulling data from database")
@@ -131,5 +137,11 @@ def get_experimenter_log_helper(public_user_id, db_conn, logger):
         honeybadger.notify(error_class=error_class, error_message=error_message)
 
         return {"error": "True", "end_user_error_message": f"Error collecting Experimenter Log data for public_user_id: {public_user_id}"}
+    
+    finally:
+
+        # Close database connection if it exists    
+        if db_conn is not None:
+            db_conn.close()   
     
     
