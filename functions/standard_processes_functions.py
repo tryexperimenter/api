@@ -7,17 +7,22 @@
 from honeybadger import honeybadger
 import traceback
 from sendgrid import SendGridAPIClient
+from datetime import datetime
 
 # Custom imports
-from postgresql_db_functions import execute_sql_return_df, executemany_sql_return_status_message
+from postgresql_db_functions import create_db_connection, execute_sql_return_df, executemany_sql_return_status_message
 from short_io_functions import generate_short_url
 from sendgrid_functions import send_email
 
 
 # Schedule messages to be sent out in the next 72 hours
-def schedule_messages(db_conn, sendgrid_api_key, short_io_api_key, logger) -> dict:
+def schedule_messages(db_connection_parameters, sendgrid_api_key, short_io_api_key, logger) -> dict:
 
     try:
+
+        # Get database connection
+        db_conn = None # initialize db_conn as None so that the finally block doesn't error out if the db_conn variable doesn't exist
+        db_conn = create_db_connection(db_connection_parameters, logger)
 
         ## Create connection to SendGrid (for sending emails)
         # Note that you'll need to enable all of the actions you want to take in SendGrid's UI when you create the API key (e.g., scheduledule sends)
@@ -68,7 +73,7 @@ WHERE
                 from_email = 'experiments@tryexperimenter.com', 
                 from_display_name = 'Experimenter',
                 to_email = 'tristan@tryexperimenter.com', 
-                subject = 'No Messages to Schedule', 
+                subject = f'schedule_messages() - {datetime.now().strftime("%Y-%m-%d")} - no messages to schedule', 
                 message_text_html = 'There were no messages to schedule.', 
                 add_unsubscribe_link = False,
                 sendgrid_client = sendgrid_client, 
@@ -339,17 +344,59 @@ VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s);'''
             logger.error(traceback.format_exc())
                 
         ## Send status email update, return outcome of schedule_messages()
+        logger.info(f"Send status email update, return outcome of schedule_messages()")
+
         try:
 
-            # Define status message text
-            status_message_text = f"""{len(df_messages[df_messages['status'] == 'message_scheduled'])} message(s) were scheduled. <br><br> {len(df_messages[df_messages['status'] != 'message_scheduled'])} message(s) failed to schedule."""
+            # Define status message subject
+            status_message_subject = f'schedule_messages() - {datetime.now().strftime("%Y-%m-%d")} - scheduled: {len(df_messages[df_messages["status"] == "message_scheduled"])}, failed: {len(df_messages[df_messages["status"] != "message_scheduled"])}'
+            logger.info(f"status_message_subject: {status_message_subject}")
+
+            # Add basic info on all scheduled messages to status_message_text
+            df_scheduled_messages = df_messages[df_messages['status'] == 'message_scheduled']
+            status_message_text = f"Scheduled messages: {len(df_scheduled_messages)} <br><br>"
+            if len(df_scheduled_messages) > 0:
+                for (
+                    user_email,
+                    email_subject,
+                    action_datetime,
+                    ) in \
+                zip(
+                    df_scheduled_messages['user_email'],
+                    df_scheduled_messages['email_subject'],
+                    df_scheduled_messages['action_datetime'],
+                    ):
+
+                    status_message_text += f"{user_email} - {email_subject} - {action_datetime} UTC<br>"
+
+            # Add basic info on all failed messages to status_message_text
+            df_failed_messages = df_messages[df_messages['status'] != 'message_scheduled']
+            status_message_text += f"<br>Failed messages: {len(df_failed_messages)}<br><br>"
+            if len(df_failed_messages) > 0:
+                for (
+                    user_email,
+                    email_subject,
+                    action_datetime,
+                    status,
+                    status_note
+                    ) in \
+                zip(
+                    df_failed_messages['user_email'],
+                    df_failed_messages['email_subject'],
+                    df_failed_messages['action_datetime'],
+                    df_failed_messages['status'],
+                    df_failed_messages['status_note'],
+                    ):
+
+                    status_message_text += f"{user_email} - {email_subject} - {action_datetime} UTC - {status} - {status_note}<br>"
+            logger.info(f"status_message_text: {status_message_text}")
 
             # Send email to experiments@tryexperimenter.com with summary of what happened
             dict_response = send_email(
                 from_email = 'experiments@tryexperimenter.com', 
                 from_display_name = 'Experimenter',
                 to_email = 'tristan@tryexperimenter.com', 
-                subject = 'Experiment Messages Status Email', 
+                subject = status_message_subject, 
                 message_text_html = status_message_text, 
                 add_unsubscribe_link = False,
                 sendgrid_client = sendgrid_client, 
@@ -373,3 +420,9 @@ VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s);'''
         logger.error(traceback.format_exc()) # provide the full traceback of everything that caused the error
         honeybadger.notify(error_class=error_class, error_message=error_message)        
         raise Exception(error_message)
+
+    finally:
+
+        # Close database connection if it exists    
+        if db_conn is not None:
+            db_conn.close()        
