@@ -4,11 +4,15 @@ from honeybadger import honeybadger
 import traceback
 
 # Custom imports
-from postgresql_db_functions import execute_sql_return_status_message
+from postgresql_db_functions import create_db_connection, execute_sql_return_status_message
 
-def log_api_call(environment, endpoint, db_conn, logger):
+def log_api_call(environment, endpoint, db_connection_parameters, logger):
 
     try:
+
+        # Get database connection
+        db_conn = None # initialize db_conn as None so that the finally block doesn't error out if the db_conn variable doesn't exist
+        db_conn = create_db_connection(db_connection_parameters, logger)
 
         logger.info(f"Logging api call in api_calls table: environment: {environment}, endpoint: {endpoint}")
 
@@ -27,4 +31,9 @@ def log_api_call(environment, endpoint, db_conn, logger):
         logger.error(error_message)
         logger.error(traceback.format_exc()) # provide the full traceback of everything that caused the error
         honeybadger.notify(error_class=error_class, error_message=error_message)        
-        
+
+    finally:
+
+        # Close database connection if it exists    
+        if db_conn is not None:
+            db_conn.close()        
