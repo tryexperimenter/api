@@ -29,8 +29,10 @@ def validate_text(text, logger):
     if text_is_empty(text):
         raise ValueError("text_is_empty")
     elif text_has_only_whitespace(text):
+        logger.error(f"text_has_only_whitespace: {text} (end text)")
         raise ValueError("text_has_only_whitespace")
     elif text_has_curly_braces(text):
+        logger.error(f"text_has_curly_braces: {text}")
         raise ValueError("text_has_curly_braces")
     else:
         logger.info("text is valid")
