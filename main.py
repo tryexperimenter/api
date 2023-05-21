@@ -4,7 +4,7 @@
 import os, sys
 import uvicorn
 import json
-import pandas as pd
+from time import sleep
 from fastapi import FastAPI, APIRouter, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import dotenv_values # pip install python-dotenv
@@ -14,6 +14,7 @@ from datetime import datetime
 from honeybadger import honeybadger 
 from honeybadger.contrib.fastapi import HoneybadgerRoute
 import traceback
+
 
 # %%% Import custom modules
 sys.path.append("./functions")
@@ -26,7 +27,7 @@ from standard_processes_functions import schedule_messages
 
 # %%% Set up logging
 if 'logger' not in locals():
-    logger = get_logger(logger_name = "api")
+    logger = get_logger(logger_name="api")
 
 # %%% Enable autoreload (only use when testing prior to launching server (locally or in production))
 # If you change code in custom functions, you'll need to reload them. Otherwise, you'll have to close out of Python and reimport everything.
@@ -121,23 +122,19 @@ async def get_log(id: int) -> dict:
 @app.get("/v1/schedule_messages/")
 async def api_schedule_messages(auth_code: str, background_tasks: BackgroundTasks):
 
+    # Check that the auth_code is correct to ensure someone can't maliciously call the endpoint (e.g., /v1/schedule_messages/?auth_code=rFLrsTdXGcA8VyoyaBMY-L*mMe@enU was called)
     if auth_code == "rFLrsTdXGcA8VyoyaBMY-L*mMe@enU": 
 
-        db_conn = None
-
         try:
-
-            # Get database connection
-            db_conn = create_db_connection(db_connection_parameters, logger)
 
             # Log API call
             endpoint = f"/v1/schedule_messages/?auth_code={auth_code}"
             logger.info(f"Endpoint called: {endpoint}")
-            log_api_call(environment=environment, endpoint=endpoint, db_conn=db_conn, logger = logger)
+            log_api_call(environment=environment, endpoint=endpoint, db_connection_parameters=db_connection_parameters, logger=logger)
 
             # Schedule messages (call as a background task so that the API call doesn't take too long. more info: https://fastapi.tiangolo.com/tutorial/background-tasks/)
             logger.info("Calling schedule_messages()")
-            background_tasks.add_task(schedule_messages, db_conn = db_conn, sendgrid_api_key = sendgrid_api_key, short_io_api_key = short_io_api_key, logger = logger)
+            background_tasks.add_task(schedule_messages, db_connection_parameters=db_connection_parameters, sendgrid_api_key=sendgrid_api_key, short_io_api_key=short_io_api_key, logger=logger)
 
             return {"message": "schedule_messages() called successfully as a background task"}
         
@@ -151,36 +148,28 @@ async def api_schedule_messages(auth_code: str, background_tasks: BackgroundTask
 
             return {"error": "True", "error_message": f"Error running /v1/schedule_messages/?auth_code={auth_code}. Check logs for more info."}
         
-        finally:
-            if db_conn is not None:
-                db_conn.close()
-
     else:
 
+        sleep(10) # sleep prevent brute force attacks
         return {"error": "True", "message": f"authorization code incorrect: {auth_code}"}
 
 @app.get("/v1/experimenter-log/")
 async def get_experimenter_log(public_user_id: str):
 
-    db_conn = None
-
     try:
-
-        # Get database connection
-        db_conn = create_db_connection(db_connection_parameters, logger)
 
         # Log API call
         endpoint = f"/v1/experimenter-log/?public_user_id={public_user_id}"
         logger.info(f"Endpoint called: {endpoint}")
-        log_api_call(environment=environment, endpoint=endpoint, db_conn=db_conn, logger=logger)
+        log_api_call(environment=environment, endpoint=endpoint, db_connection_parameters=db_connection_parameters, logger=logger)
 
         # Get experimenter log data
         logger.info("Calling get_experimenter_log_helper()")
-        dict_response = get_experimenter_log_helper(public_user_id = public_user_id, db_conn = db_conn, logger = logger)
+        dict_response = get_experimenter_log_helper(public_user_id=public_user_id, db_connection_parameters=db_connection_parameters, logger=logger)
 
         # Format response as JSON
         logger.info("Calling create_json_response()")
-        json_response = create_json_response(dict_response = dict_response, logger = logger)
+        json_response = create_json_response(dict_response=dict_response, logger=logger)
 
         logger.info("Returning json_response")
         return json_response
@@ -194,10 +183,6 @@ async def get_experimenter_log(public_user_id: str):
         honeybadger.notify(error_class=error_class, error_message=error_message)
 
         return {"error": "True", "end_user_error_message": f"Error collecting Experimenter Log data for public_user_id: {public_user_id}"}
-    
-    finally:
-        if db_conn is not None:
-            db_conn.close()
 
 # %% Run app
 if __name__ == "__main__":
