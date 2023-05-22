@@ -22,8 +22,9 @@ def get_experimenter_log_helper(public_user_id, db_connection_parameters, logger
         ## Retrieve experimenter log data from database
         logger.info("Retrieve experimenter log data from database")
 
-        # Define sql query
-        sql_statement = f"""
+        # Define sql query (use parameters rather than f-string to avoid SQL injection)
+        sql_params = {'public_user_id': public_user_id}
+        sql_statement = """
 /*
 Case 1: Public_user_id is not found / not active -- returns no rows
 Case 2: User has no experiments -- returns one row with just user's info
@@ -40,7 +41,7 @@ FROM
 	user_lookups ul, 
 	users u
 WHERE
-	ul.public_user_id = '{public_user_id}' AND -- restrict to the public_user_id
+	ul.public_user_id = %(public_user_id)s AND -- restrict to the public_user_id
     ul.status = 'active' AND -- ensure the public_user_id is active 
     u.id = ul.user_id), -- restrict to the user associated with the public_user_id
 
@@ -115,9 +116,8 @@ ORDER BY
 	ep_display_order,
 	op_display_order;"""
 
-
         # Pull data from database
-        df = execute_sql_return_df(sql_statement = sql_statement, db_conn = db_conn, logger = logger)
+        df = execute_sql_return_df(sql_statement = sql_statement, sql_params = sql_params, db_conn = db_conn, logger = logger)
         logger.info("Finished retrieving experimenter log data from database")
 
         ## CASE 1: Public_user_id was not found / not active

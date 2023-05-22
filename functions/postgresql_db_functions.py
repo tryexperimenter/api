@@ -104,13 +104,20 @@ def create_db_connection(db_connection_parameters, logger):
 
 
 ## Excute a SQL statement, return dataframe
-def execute_sql_return_df(sql_statement, db_conn, logger):
+# We use SQL parameters (rather than inserting user generated info into a SQL statement with f-strings) to prevent SQL injection attacks (https://www.psycopg.org/psycopg3/docs/basic/params.html)
+def execute_sql_return_df(sql_statement, sql_params, db_conn, logger):
 
     try:
 
         with db_conn.cursor() as cursor:
 
-            cursor.execute(sql_statement)
+            if sql_params is None:
+
+                cursor.execute(sql_statement)
+
+            else:
+
+                cursor.execute(sql_statement, sql_params)
 
             db_conn.commit() # note that any other transactions using this db_conn will be committed as well
 
@@ -128,13 +135,20 @@ def execute_sql_return_df(sql_statement, db_conn, logger):
         raise Exception(error_message)
 
 ## Excute a SQL statement, return status message (no data returned)
-def execute_sql_return_status_message(sql_statement, db_conn, logger):
+# We use SQL parameters (rather than inserting user generated info into a SQL statement with f-strings) to prevent SQL injection attacks (https://www.psycopg.org/psycopg3/docs/basic/params.html)
+def execute_sql_return_status_message(sql_statement, sql_params, db_conn, logger):
 
     try:
 
         with db_conn.cursor() as cursor:
 
-            cursor.execute(sql_statement)
+            if sql_params is None:
+
+                cursor.execute(sql_statement)
+
+            else:
+
+                cursor.execute(sql_statement, sql_params)
             
             db_conn.commit() # note that any other transactions using this db_conn will be committed as well
 
@@ -150,7 +164,8 @@ def execute_sql_return_status_message(sql_statement, db_conn, logger):
         raise Exception(error_message)
 
 
-## Excute a SQL statement using execute man, return status message (no data returned)
+## Excute a SQL statement using executemany, return status message (no data returned)
+# Using tuples in executemany should have psycopg2 do sanitation to prevent any sql injection attack
 def executemany_sql_return_status_message(sql_statement, tuples, db_conn, logger):
 
     # Example:

@@ -31,7 +31,8 @@ def schedule_messages(db_connection_parameters, sendgrid_api_key, short_io_api_k
         ## Identify messages to schedule
         logger.info("Identify messages to schedule")
 
-        # Define sql query
+        # Define sql query (use parameters rather than f-string to avoid SQL injection)
+        sql_params = None
         sql_statement = """
 SELECT
     sga.id AS sub_group_action_id,
@@ -62,7 +63,7 @@ WHERE
 	u.id = sga.user_id; -- pull on user info (email, first_name)"""
 
         # Pull data from database
-        df_messages = execute_sql_return_df(sql_statement = sql_statement, db_conn = db_conn, logger = logger)
+        df_messages = execute_sql_return_df(sql_statement = sql_statement, sql_params = None, db_conn = db_conn, logger = logger)
 
         ## If no messages to schedule, send status email and return message
         if len(df_messages) == 0:
