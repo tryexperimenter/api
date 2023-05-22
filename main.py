@@ -18,7 +18,7 @@ import traceback
 
 # %%% Import custom modules
 sys.path.append("./functions")
-from data_processing_functions import get_experimenter_log_helper
+from data_retrieval_functions import get_experimenter_log_helper
 from logging_functions import get_logger
 from json_response_processing_functions import create_json_response
 from analytics_functions import log_api_call
