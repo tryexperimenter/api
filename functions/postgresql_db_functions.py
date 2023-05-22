@@ -9,6 +9,8 @@ import traceback
 
 # ## Load variables from .env file or OS environment variables
 # #Sample .env file: PROD_DB_CONNECTION_PARAMETERS={"db": "production_7crrss", "host": "dpg-ch3arqkimipg-a.ohio-postgres.render.com", "user": "admin", "password": "MXObCVERY0rEPyr", "port": "5432"}
+# import psycopg2 # pip install psycopg2-binary
+# import pandas as pd
 # import os
 # import json
 # from dotenv import dotenv_values # pip install python-dotenv
@@ -95,36 +97,6 @@ def create_db_connection(db_connection_parameters, logger):
 
         error_class = f"API | create_db_connection()"
         error_message = f"create_db_connection() failed; Error: {e}"
-        logger.error(error_message)
-        logger.error(traceback.format_exc()) # provide the full traceback of everything that caused the error
-        honeybadger.notify(error_class=error_class, error_message=error_message)        
-        raise Exception(error_message)
-
-
-## Get Experimenter Log Data
-def db_get_experimenter_log_data(public_user_id: str, db_conn, logger):
-
-    try:
-        
-        with db_conn.cursor() as cursor:
-            # Call the get_experimenter_log_data() postgres function defined in Supabase
-            # Case 1: Public_user_id is not found / not active -- returns no rows
-            # Case 2: User has no experiments -- returns one row with just user's info
-            # Case 3: User has experiments -- returns rows for every experiment / observation prompt combination
-            # Case 4: User has experiments and has observations -- returns rows for every experiment / observation prompt combination with observation column filled out
-
-            cursor.callproc('get_experimenter_log_data', [public_user_id])
-
-            data = cursor.fetchall()
-            col_names = [desc[0] for desc in cursor.description]
-            return pd.DataFrame(data, columns=col_names)
-        
-
-
-    except Exception as e:
-
-        error_class = f"API | db_get_experimenter_log_data()"
-        error_message = f"db_get_experimenter_log_data() failed; Error: {e}"
         logger.error(error_message)
         logger.error(traceback.format_exc()) # provide the full traceback of everything that caused the error
         honeybadger.notify(error_class=error_class, error_message=error_message)        
