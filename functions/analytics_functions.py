@@ -16,9 +16,10 @@ def log_api_call(environment, endpoint, db_connection_parameters, logger):
 
         logger.info(f"Logging api call in api_calls table: environment: {environment}, endpoint: {endpoint}")
 
-        sql_statement = f"INSERT INTO api_calls (environment, endpoint) VALUES ('{environment}', '{endpoint}');"
+        sql_params = {'environment': environment, 'endpoint': endpoint}
+        sql_statement = "INSERT INTO api_calls (environment, endpoint) VALUES (%(environment)s, %(endpoint)s);"
 
-        response = execute_sql_return_status_message(sql_statement, db_conn, logger)
+        response = execute_sql_return_status_message(sql_statement=sql_statement, sql_params=sql_params, db_conn=db_conn, logger=logger)
 
         logger.info(f"Logging api call in api_calls table: response: {response}")
 
