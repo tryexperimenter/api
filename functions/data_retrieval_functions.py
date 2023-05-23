@@ -191,7 +191,7 @@ ORDER BY
                 # Methodology: https://stackoverflow.com/questions/55004985/convert-pandas-dataframe-to-json-with-columns-as-key
                 # Output Sample: [{'experiment_id': 'e1', 'experiment': 'Celebrate something.', 'data': [{'observation_prompt': 'What makes you happier at work?', 'observation': 'My observation for o1.'}, {'observation_prompt': 'What makes you successful at work?', 'observation': 'My observation for o7.'}]}, {'experiment_id': 'e2', 'experiment': 'Seek feedback from someone on your team.', 'data': [{'observation_prompt': 'What makes you happier at work?', 'observation': 'My observation for o2.'}, {'observation_prompt': 'What makes you successful at work?', 'observation': 'My observation for o8.'}]}, {'experiment_id': 'e3', 'experiment': 'Keep quiet for 10-15 minutes in a meeting (or until someone asks for your input).', 'data': [{'observation_prompt': 'What makes you happier at work?', 'observation': 'My observation for o3.'}, {'observation_prompt': 'What makes you successful at work?', 'observation': 'My observation for o9.'}]}]
                 primary_cols = ['experiment_prompt_id', 'experiment_prompt']
-                data_cols = ['observation_prompt', 'observation']
+                data_cols = ['observation_prompt_id', 'observation_prompt', 'observation']
                 dict_experiments = (df_sub_group.groupby(primary_cols)[data_cols]
                     .apply(lambda x: x.to_dict('records'))
                     .reset_index(name='observations')
@@ -199,7 +199,7 @@ ORDER BY
 
                 # For each experiment, set observations to "None" if there are no observation prompts / observations 
                 for index in range(0, len(dict_experiments)):
-                    if dict_experiments[index]['observations'] == [{'observation_prompt': '', 'observation': ''}]:
+                    if dict_experiments[index]['observations'] == [{'observation_prompt_id': '', 'observation_prompt': '', 'observation': ''}]:
                         dict_experiments[index]['observations'] = "None"
                 
                 # Add experiments / observations for this sub_group
