@@ -119,7 +119,7 @@ async def get_log(id: int) -> dict:
 
     return { "message": "The user id is: " + str(id)}
 
-@app.get("/v1/schedule_messages/")
+@app.get("/v1/schedule-messages/")
 async def api_schedule_messages(auth_code: str, background_tasks: BackgroundTasks):
 
     # Check that the auth_code is correct to ensure someone can't maliciously call the endpoint (e.g., /v1/schedule_messages/?auth_code=rFLrsTdXGcA8VyoyaBMY-L*mMe@enU was called)
@@ -128,7 +128,7 @@ async def api_schedule_messages(auth_code: str, background_tasks: BackgroundTask
         try:
 
             # Log API call
-            endpoint = f"/v1/schedule_messages/?auth_code={auth_code}"
+            endpoint = f"/v1/schedule-messages/?auth_code={auth_code}"
             logger.info(f"Endpoint called: {endpoint}")
             log_api_call(environment=environment, endpoint=endpoint, db_connection_parameters=db_connection_parameters, logger=logger)
 
@@ -140,13 +140,13 @@ async def api_schedule_messages(auth_code: str, background_tasks: BackgroundTask
         
         except Exception as e:
             
-            error_class = f"API | /v1/schedule_messages/?auth_code={auth_code}"
-            error_message = f"Error with /v1/schedule_messages/?auth_code={auth_code}; Error: {e}"
+            error_class = f"API | /v1/schedule-messages/?auth_code={auth_code}"
+            error_message = f"Error with /v1/schedule0messages/?auth_code={auth_code}; Error: {e}"
             logger.error(error_message)
             logger.error(traceback.format_exc()) # provide the full traceback of everything that caused the error
             honeybadger.notify(error_class=error_class, error_message=error_message)
 
-            return {"error": "True", "error_message": f"Error running /v1/schedule_messages/?auth_code={auth_code}. Check logs for more info."}
+            return {"error": "True", "error_message": f"Error running /v1/schedule-messages/?auth_code={auth_code}. Check logs for more info."}
         
     else:
 
@@ -183,6 +183,18 @@ async def get_experimenter_log(public_user_id: str):
         honeybadger.notify(error_class=error_class, error_message=error_message)
 
         return {"error": "True", "end_user_error_message": f"Error collecting Experimenter Log data for public_user_id: {public_user_id}"}
+
+@app.get("/v1/submit-observation/")
+async def submit_observation():
+
+    return {"message": "Success!"}
+
+    # TODO: Write endpoint to submit observation with a POST request with fields: public_user_id: str, observation_prompt_id: str, visibility: str, observation: str
+
+    # Make sure to catch errors where the public_user_id doesn't exist in the database, or the observation_prompt_id doesn't exist in the database, or the visibility is not one of the allowed values, or the observation is not a string
+
+    # See if FASTAPI has a way to validate the data types of the fields
+
 
 # %% Run app
 if __name__ == "__main__":
