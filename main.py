@@ -9,6 +9,7 @@ from fastapi import FastAPI, APIRouter, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import dotenv_values # pip install python-dotenv
 from datetime import datetime
+from pydantic import BaseModel # used so we can set up a models for the body of POST requests
 # honeybadger.io: monitor errors in production
 # https://www.honeybadger.io/blog/honeybadger-fastapi-python/ and https://docs.honeybadger.io/lib/python/#fastapi-advanced-usage-
 from honeybadger import honeybadger 
@@ -184,9 +185,22 @@ async def get_experimenter_log(public_user_id: str):
 
         return {"error": "True", "end_user_error_message": f"Error collecting Experimenter Log data for public_user_id: {public_user_id}"}
 
-@app.get("/v1/submit-observation/")
-async def submit_observation():
+###
+# Submit observation
+###
 
+class Observation(BaseModel):
+    public_user_id: str
+    observation_prompt_id: str
+    visibility: str
+    observation: str
+
+@app.post("/v1/submit-observation/")
+async def submit_observation(item: Observation):
+
+    logger.info(f"Endpoint called: /v1/submit-observation/")
+    logger.info(f"item: {item}")
+    
     return {"message": "Success!"}
 
     # TODO: Write endpoint to submit observation with a POST request with fields: public_user_id: str, observation_prompt_id: str, visibility: str, observation: str
