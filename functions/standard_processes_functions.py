@@ -63,7 +63,7 @@ WHERE
 	u.id = sga.user_id; -- pull on user info (email, first_name)"""
 
         # Pull data from database
-        df_messages = execute_sql_return_df(sql_statement = sql_statement, sql_params = None, db_conn = db_conn, logger = logger)
+        df_messages = execute_sql_return_df(sql_statement = sql_statement, sql_params = sql_params, db_conn = db_conn, logger = logger)
 
         ## If no messages to schedule, send status email and return message
         if len(df_messages) == 0:
@@ -93,19 +93,19 @@ WHERE
         logger.info("Identify experiment prompts to include in messages")
 
         # Define sql query (pull experiment prompts for each sub_group_id associated with a message we want to schedule)
-        sub_group_ids = df_messages['sub_group_id'].unique()
-        sub_group_ids = "'" + '\',\''.join(sub_group_ids) + "'" # generates a string of sub_group_ids separated by commas to use in a sql query (e.g., '66cb527749c57fb78d6f','3166b227e57b89f3d68d','0644ddb2baea156e84b8','f8b84bf9de73b95f5702','63c09c65c6b1822f11ad')
-        sql_statement = f"""
+        sub_group_ids = tuple(df_messages['sub_group_id'].unique())
+        sql_params = {'sub_group_ids': sub_group_ids}
+        sql_statement = """
 SELECT 
 	sub_group_id,
 	experiment_prompt,
 	display_order
 FROM experiment_prompts
-WHERE sub_group_id IN ({sub_group_ids});"""
-        logger.info(f"sub_group_ids: {sub_group_ids}")
+WHERE sub_group_id IN %(sub_group_ids)s;"""
 
         # Pull data from database
-        df_experiment_prompts = execute_sql_return_df(sql_statement = sql_statement, db_conn = db_conn, logger = logger)        
+        logger.info(f"sub_group_ids: {sub_group_ids}")
+        df_experiment_prompts = execute_sql_return_df(sql_statement = sql_statement, sql_params = sql_params, db_conn = db_conn, logger = logger)        
 
         # Create dictionary of experiment prompts (each sub_group_id is a key, and the value is an ordered list of experiment prompts)
         # Example
