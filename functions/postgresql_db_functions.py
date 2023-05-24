@@ -15,6 +15,7 @@ import traceback
 # import os
 # import json
 # import sys
+# import traceback
 # from dotenv import dotenv_values # pip install python-dotenv
 
 # # Custom modules
@@ -38,7 +39,7 @@ import traceback
 
 # # SQL statement without parameters
 # sql_params = None
-# sql_statement = "SELECT * FROM users;"
+# sql_statement = "SELECT * FROM userss;"
 
 # # SQL statement with parameters
 # sql_params = {'email': 'sample_user_1@gmail.com', 'first_name': 'Sample'}
@@ -109,7 +110,7 @@ import traceback
 
 
 
-## Create Database Connection
+# %% Create Database Connection
 def create_db_connection(db_connection_parameters, logger):
 
     try: 
@@ -132,7 +133,7 @@ def create_db_connection(db_connection_parameters, logger):
         raise Exception(error_message)
 
 
-## Excute a SQL statement, return dataframe
+# %% Excute a SQL statement, return dataframe
 # We use SQL parameters (rather than inserting user generated info into a SQL statement with f-strings) to prevent SQL injection attacks (https://www.psycopg.org/psycopg3/docs/basic/params.html)
 def execute_sql_return_df(sql_statement, sql_params, db_conn, logger):
 
@@ -163,7 +164,7 @@ def execute_sql_return_df(sql_statement, sql_params, db_conn, logger):
         honeybadger.notify(error_class=error_class, error_message=error_message)        
         raise Exception(error_message)
 
-## Excute a SQL statement, return status message (no data returned)
+# %% Excute a SQL statement, return status message (no data returned)
 # We use SQL parameters (rather than inserting user generated info into a SQL statement with f-strings) to prevent SQL injection attacks (https://www.psycopg.org/psycopg3/docs/basic/params.html)
 def execute_sql_return_status_message(sql_statement, sql_params, db_conn, logger):
 
@@ -181,7 +182,7 @@ def execute_sql_return_status_message(sql_statement, sql_params, db_conn, logger
             
             db_conn.commit() # note that any other transactions using this db_conn will be committed as well
 
-            return cursor.statusmessage
+            return cursor.statusmessage # the message like 'INSERT 0 1' that is returned after running a postgresql command
 
     except Exception as e:
 
@@ -193,7 +194,7 @@ def execute_sql_return_status_message(sql_statement, sql_params, db_conn, logger
         raise Exception(error_message)
 
 
-## Excute a SQL statement using executemany, return status message (no data returned)
+# %% Excute a SQL statement using executemany, return status message (no data returned)
 # Using tuples in executemany should have psycopg2 do sanitation to prevent any sql injection attack
 def executemany_sql_return_status_message(sql_statement, tuples, db_conn, logger):
 
@@ -209,7 +210,7 @@ def executemany_sql_return_status_message(sql_statement, tuples, db_conn, logger
 
             db_conn.commit() # note that any other transactions using this db_conn will be committed as well
 
-            return cursor.statusmessage
+            return cursor.statusmessage # the message like 'INSERT 0 1' that is returned after running a postgresql command
 
     except Exception as e:
 

@@ -25,6 +25,7 @@ from json_response_processing_functions import create_json_response
 from analytics_functions import log_api_call
 from postgresql_db_functions import create_db_connection
 from standard_processes_functions import schedule_messages
+from data_submission_functions import submit_observation
 
 # %%% Set up logging
 if 'logger' not in locals():
@@ -179,6 +180,7 @@ async def get_experimenter_log(public_user_id: str):
         
         error_class = f"API | /v1/experimenter-log/?public_user_id={public_user_id}"
         error_message = f"Error with /v1/experimenter-log/?public_user_id={public_user_id}; Error: {e}"
+        logger.error(error_class)
         logger.error(error_message)
         logger.error(traceback.format_exc()) # provide the full traceback of everything that caused the error
         honeybadger.notify(error_class=error_class, error_message=error_message)
@@ -196,18 +198,41 @@ class Observation(BaseModel):
     observation: str
 
 @app.post("/v1/submit-observation/")
-async def submit_observation(item: Observation):
+async def api_submit_observation(item: Observation):
 
-    logger.info(f"Endpoint called: /v1/submit-observation/")
-    logger.info(f"item: {item}")
+    try:
+
+        logger.info(f"Endpoint called: /v1/submit-observation/")
+        logger.info(f"item: {item}")
+        
+        response = submit_observation(
+            public_user_id=item.public_user_id, 
+            observation_prompt_id=item.observation_prompt_id, 
+            visibility=item.visibility, 
+            observation=item.observation, 
+            db_connection_parameters=db_connection_parameters, 
+            logger=logger)
+
+        if response.status == "success":
+
+            logger.info("Observation submitted successfully")
+            return {"status": "success"}
     
-    return {"message": "Success!"}
+        else:
 
-    # TODO: Write endpoint to submit observation with a POST request with fields: public_user_id: str, observation_prompt_id: str, visibility: str, observation: str
+            logger.info("Observation not submitted successfully")
+            return {"status": "failure", "end_user_error_message": "Unfortunately, we had an issue adding your observation to our database. Please try again later. If the issue persists, please contact us at support@tryexperimenter.com."}
+    
+    except Exception as e:
+        
+        error_class = f"API | /v1/submit-observation/"
+        error_message = f"POST Request: {item}; Error: {e}"
+        logger.error(error_class)
+        logger.error(error_message)
+        logger.error(traceback.format_exc()) # provide the full traceback of everything that caused the error
+        honeybadger.notify(error_class=error_class, error_message=error_message)
 
-    # Make sure to catch errors where the public_user_id doesn't exist in the database, or the observation_prompt_id doesn't exist in the database, or the visibility is not one of the allowed values, or the observation is not a string
-
-    # See if FASTAPI has a way to validate the data types of the fields
+        return {"status": "failure", "end_user_error_message": "Unfortunately, we had an issue adding your observation to our database. Please try again later. If the issue persists, please contact us at support@tryexperimenter.com."}
 
 
 # %% Run app
