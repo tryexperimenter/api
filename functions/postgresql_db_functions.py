@@ -157,6 +157,8 @@ def execute_sql_return_df(sql_statement, sql_params, db_conn, logger):
 
     except Exception as e:
 
+        db_conn.rollback() # rollback any changes made to the database during this failed transaction    
+
         error_class = f"API | execute_sql_return_df()"
         error_message = f"execute_sql_return_df() failed; Error: {e}, SQL Statement: {sql_statement}"
         logger.error(error_message)
@@ -182,16 +184,19 @@ def execute_sql_return_status_message(sql_statement, sql_params, db_conn, logger
             
             db_conn.commit() # note that any other transactions using this db_conn will be committed as well
 
-            return cursor.statusmessage # the message like 'INSERT 0 1' that is returned after running a postgresql command
+            return {"status": "success", "status_message": cursor.statusmessage} # the message like 'INSERT 0 1' that is returned after running a postgresql command
 
     except Exception as e:
+
+        db_conn.rollback() # rollback any changes made to the database during this failed transaction    
 
         error_class = f"API | execute_sql_return_status_message()"
         error_message = f"execute_sql_return_status_message() failed; Error: {e}, SQL Statement: {sql_statement}"
         logger.error(error_message)
         logger.error(traceback.format_exc()) # provide the full traceback of everything that caused the error
         honeybadger.notify(error_class=error_class, error_message=error_message)        
-        raise Exception(error_message)
+        
+        return {"status": "failure", "status_message": f"error: {e}"}
 
 
 # %% Excute a SQL statement using executemany, return status message (no data returned)
@@ -213,6 +218,8 @@ def executemany_sql_return_status_message(sql_statement, tuples, db_conn, logger
             return cursor.statusmessage # the message like 'INSERT 0 1' that is returned after running a postgresql command
 
     except Exception as e:
+
+        db_conn.rollback() # rollback any changes made to the database during this failed transaction    
 
         error_class = f"API | execute_sql_return_status_message()"
         error_message = f"execute_sql_return_status_message() failed; Error: {e}, SQL Statement: {sql_statement}"
