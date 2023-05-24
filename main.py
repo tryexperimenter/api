@@ -204,7 +204,8 @@ async def endpoint_submit_observation(item: Observation):
     try:
 
         logger.info(f"Endpoint called: /v1/submit-observation/")
-        logger.info(f"item: {item}")
+        logger.info(f"Request type: POST")
+        logger.info(f"Payload: {item}")
         
         response = submit_observation(
             public_user_id=item.public_user_id, 
@@ -214,14 +215,16 @@ async def endpoint_submit_observation(item: Observation):
             db_connection_parameters=db_connection_parameters, 
             logger=logger)
 
-        if response.status == "success":
+        if response["status"] == "success":
 
-            logger.info("Observation submitted successfully")
+            logger.info(f"submit_observation() successful")
+            
             return {"status": "success"}
     
         else:
 
-            logger.info("Observation not submitted successfully")
+            logger.info(f"submit_observation() unsuccessful")
+
             return {"status": "failure", "end_user_error_message": "Unfortunately, we had an issue adding your observation to our database. Please try again later. If the issue persists, please contact us at support@tryexperimenter.com."}
     
     except Exception as e:

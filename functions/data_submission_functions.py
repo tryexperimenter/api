@@ -19,8 +19,6 @@ def retrieve_user_id_from_public_user_id(
     
     try:
 
-        logger.info(f"Retrieve user_id from public_user_id: {public_user_id}")
-
         # Define sql query (use parameters rather than f-string to avoid SQL injection)
         sql_params = {'public_user_id': public_user_id}
         sql_statement = """
@@ -37,13 +35,16 @@ WHERE public_user_id = %(public_user_id)s;"""
         
         # Format return dictionary
         if len(df) == 0:
-            logger.info(f"No user_id found")
+
+            logger.info(f"retrieve_user_id_from_public_user_id(): no user_id found")
+
             dict_return = {
                 "user_lookup_id": None,
                 "user_id": None,
                 "status": None}
+            
         elif len(df) == 1:
-            logger.info(f"Successful public_user_id lookup")
+            logger.info(f"retrieve_user_id_from_public_user_id(): user_id found")
             dict_return = {
                 "user_lookup_id": df['user_lookup_id'].iloc[0],
                 "user_id": df['user_id'].iloc[0],
@@ -55,7 +56,8 @@ WHERE public_user_id = %(public_user_id)s;"""
     except Exception as e:
 
         error_class = f"API | retrieve_user_id_from_public_user_id()"
-        error_message = f"Error with retrieve_user_id_from_public_user_id() for public_user_id ={public_user_id}; Error: {e}"
+        error_message = f"Error for public_user_id ={public_user_id}; Error: {e}"
+        logger.error(error_class)
         logger.error(error_message)
         logger.error(traceback.format_exc()) # provide the full traceback of everything that caused the error
         honeybadger.notify(error_class=error_class, error_message=error_message)
@@ -80,6 +82,8 @@ def submit_observation(
 
         # %%% Retrive user_id from public_user_id
 
+        logger.info(f"Calling retrieve_user_id_from_public_user_id() for public_user_id: {public_user_id}")
+
         dict_user_id = retrieve_user_id_from_public_user_id(
             public_user_id=public_user_id,
             db_conn=db_conn,
@@ -89,13 +93,47 @@ def submit_observation(
         
         # If user_id not found, return error message
         if user_id is None:
+
             raise ValueError(f"user_id not found for public_user_id: {public_user_id}")
 
-        # %%% TODO: Check if user has already submitted an observation for this prompt; set observation to status = "inactive"; store observation_id to set back active if adding new observation is unsuccessful
+        # %%% Update prior observation (if it exists) to status = 'inactive' and save observation_id
 
-        # %%% Add observation to database
+        logger.info(f"Update prior observation (if it exists) to status = 'inactive' and save observation_id")
 
-        # Define sql query (use parameters rather than f-string to avoid SQL injection)
+        # Define sql query
+        sql_params = {
+            'user_id': user_id,
+            'observation_prompt_id': observation_prompt_id}
+        sql_statement = """
+UPDATE observations
+SET status = 'inactive'
+WHERE 
+	user_id = %(user_id)s AND
+	observation_prompt_id = %(observation_prompt_id)s AND
+	status = 'active' -- we only want to set any active observation to inactive
+RETURNING id AS observation_id;"""
+
+        # Execute sql query
+        df = execute_sql_return_df(sql_statement=sql_statement, sql_params=sql_params, db_conn=db_conn, logger=logger)
+
+        # Store observation_id if an update was made
+        if len(df) > 0:
+            
+            observation_id = df['observation_id'].iloc[0]
+
+            logger.info(f"Updated prior observation to status = 'inactive' for observation_id: {observation_id}")
+
+        else:
+
+            logger.info("No prior observation to update to status = 'inactive'")
+
+            observation_id = None
+
+        # %%% Add new observation to database
+
+        logger.info(f"Add new observation to database")
+
+        # Define sql query
         sql_params = {
             'user_id': user_id,
             'observation_prompt_id': observation_prompt_id,
@@ -106,26 +144,64 @@ INSERT INTO observations(user_id, observation_prompt_id, observation, visibility
 VALUES (%(user_id)s, %(observation_prompt_id)s, %(observation)s, %(visibility)s);"""
 
         # Execute sql query
-        sql_status_message = execute_sql_return_status_message(sql_statement=sql_statement, sql_params=sql_params, db_conn=db_conn, logger=logger)
+        response = execute_sql_return_status_message(sql_statement=sql_statement, sql_params=sql_params, db_conn=db_conn, logger=logger)
 
-        # %%% Return status message
-        logger.info(sql_status_message)
+        # %%% Success creating new observation
+        if (response["status"] == "success" and 
+            response["status_message"] == "INSERT 0 1"):
 
-        if sql_status_message == "INSERT 0 1": # we successfully inserted 1 row
+            logger.info(f"Success: created new observation for public_user_id: {public_user_id} and observation_prompt_id: {observation_prompt_id}")
 
             return {"status": "success"}
-        
+
+        # %%% Failure creating new observation
         else:
 
-            # TODO: If we set original observation to inactive, set it back to active
+            logger.info(f"Failure: did not create new observation for public_user_id: {public_user_id} and observation_prompt_id: {observation_prompt_id}")
+
+            # If we set original observation to inactive, set it back to active since we did not create a new observation
+            try:
+
+                if observation_id is not None:
+
+                    # Define sql query
+                    sql_params = {
+                        'observation_id': observation_id}
+                    sql_statement = """
+UPDATE observations
+SET status = 'active'
+WHERE id = %(observation_id)s;"""
+
+                    # Execute sql query
+                    response = execute_sql_return_status_message(sql_statement=sql_statement, sql_params=sql_params, db_conn=db_conn, logger=logger)
+
+                    # Success
+                    if (response["status"] == "success" and 
+                        response["status_message"] == "UPDATE 1"):
+
+                        logger.info(f"Success: updated original observation back to status = 'active' for observation_id: {observation_id}")
+
+                    # Failure
+                    if (response["status"] == "failure"):
+
+                        raise ValueError(f"Failure: did not update original observation back to status = 'active' for observation_id: {observation_id}")
+
+            except Exception as e:
+
+                error_class = f"API | submit_observation()"
+                error_message = f"Error: {e}"
+                logger.error(error_message)
+                logger.error(traceback.format_exc()) # provide the full traceback of everything that caused the error
+                honeybadger.notify(error_class=error_class, error_message=error_message)
 
             return {"status": "failure"}
-
+    
     # Catch any exceptions as we tried to execute the function
     except Exception as e:
 
         error_class = f"API | submit_observation()"
         error_message = f"public_user_id: {public_user_id}, observation_prompt_id: {observation_prompt_id}, visibility: {visibility}, observation: {observation}; Error: {e}"
+        logger.error(error_class)
         logger.error(error_message)
         logger.error(traceback.format_exc()) # provide the full traceback of everything that caused the error
         honeybadger.notify(error_class=error_class, error_message=error_message)
