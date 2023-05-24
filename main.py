@@ -19,7 +19,7 @@ import traceback
 
 # %%% Import custom modules
 sys.path.append("./functions")
-from data_retrieval_functions import get_experimenter_log_helper
+from data_retrieval_functions import get_experimenter_log_data
 from logging_functions import get_logger
 from json_response_processing_functions import create_json_response
 from analytics_functions import log_api_call
@@ -99,14 +99,14 @@ router = APIRouter(route_class=HoneybadgerRoute)
 # %% Define routes
 
 @app.get("/")
-def home():
+def endpoint_home():
 
     logger.info("Endpoint called: /")
 
     return {"message": "Success!"}
 
 @app.get("/sample_error/")
-async def get_error() -> dict:
+async def endpoint_sample_error() -> dict:
 
     logger.info(f"Endpoint called: /sample_error/")
 
@@ -115,14 +115,14 @@ async def get_error() -> dict:
     return { "message": "Error: " + a}
 
 @app.get("/user/")
-async def get_log(id: int) -> dict:
+async def endpoint_user(id: int) -> dict:
 
     logger.info(f"Endpoint called: /user/?id={id}")
 
     return { "message": "The user id is: " + str(id)}
 
 @app.get("/v1/schedule-messages/")
-async def api_schedule_messages(auth_code: str, background_tasks: BackgroundTasks):
+async def endpoint_schedule_messages(auth_code: str, background_tasks: BackgroundTasks):
 
     # Check that the auth_code is correct to ensure someone can't maliciously call the endpoint (e.g., /v1/schedule_messages/?auth_code=rFLrsTdXGcA8VyoyaBMY-L*mMe@enU was called)
     if auth_code == "rFLrsTdXGcA8VyoyaBMY-L*mMe@enU": 
@@ -155,8 +155,10 @@ async def api_schedule_messages(auth_code: str, background_tasks: BackgroundTask
         sleep(10) # sleep prevent brute force attacks
         return {"error": "True", "message": f"authorization code incorrect: {auth_code}"}
 
+# %% Get Experimenter Log Data
+
 @app.get("/v1/experimenter-log/")
-async def get_experimenter_log(public_user_id: str):
+async def endpoint_experimenter_log(public_user_id: str):
 
     try:
 
@@ -166,8 +168,8 @@ async def get_experimenter_log(public_user_id: str):
         log_api_call(environment=environment, endpoint=endpoint, db_connection_parameters=db_connection_parameters, logger=logger)
 
         # Get experimenter log data
-        logger.info("Calling get_experimenter_log_helper()")
-        dict_response = get_experimenter_log_helper(public_user_id=public_user_id, db_connection_parameters=db_connection_parameters, logger=logger)
+        logger.info("Calling get_experimenter_log_data()")
+        dict_response = get_experimenter_log_data(public_user_id=public_user_id, db_connection_parameters=db_connection_parameters, logger=logger)
 
         # Format response as JSON
         logger.info("Calling create_json_response()")
@@ -187,9 +189,8 @@ async def get_experimenter_log(public_user_id: str):
 
         return {"error": "True", "end_user_error_message": f"Error collecting Experimenter Log data for public_user_id: {public_user_id}"}
 
-###
-# Submit observation
-###
+
+# %% Submit Observation
 
 class Observation(BaseModel):
     public_user_id: str
@@ -198,7 +199,7 @@ class Observation(BaseModel):
     observation: str
 
 @app.post("/v1/submit-observation/")
-async def api_submit_observation(item: Observation):
+async def endpoint_submit_observation(item: Observation):
 
     try:
 

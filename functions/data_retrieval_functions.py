@@ -11,7 +11,7 @@ import smartypants
 from postgresql_db_functions import create_db_connection, execute_sql_return_df
 
 
-def get_experimenter_log_helper(public_user_id, db_connection_parameters, logger):
+def get_experimenter_log_data(public_user_id, db_connection_parameters, logger):
 
     try:
 
@@ -220,13 +220,13 @@ ORDER BY
         # Add experiment groups, sub_groups, experiments, and observations to the response dictionary
         dict_response['groups'] = array_groups
 
-        logger.info(f"Successfully ran get_experimenter_log_helper() for public_user_id: {public_user_id}")
+        logger.info(f"Successfully ran get_experimenter_log_data() for public_user_id: {public_user_id}")
         return dict_response
     
     # Catch any exceptions as we tried to execute the function
     except Exception as e:
 
-        error_class = f"API | get_experimenter_log_helper()"
+        error_class = f"API | get_experimenter_log_data()"
         error_message = f"Error with /v1/experimenter-log/?public_user_id={public_user_id}; Error: {e}"
         logger.error(error_message)
         logger.error(traceback.format_exc()) # provide the full traceback of everything that caused the error
