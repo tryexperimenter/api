@@ -3,81 +3,110 @@ import pandas as pd
 from honeybadger import honeybadger
 import traceback
 
-# %%Postgresql / Python Overview
+# %%Example Usage and Postgresql / Python Overview and 
 
 # Documentation: https://www.postgresqltutorial.com/postgresql-python/
 
-# ## Load variables from .env file or OS environment variables
-# #Sample .env file: PROD_DB_CONNECTION_PARAMETERS={"db": "production_7crrss", "host": "dpg-ch3arqkimipg-a.ohio-postgres.render.com", "user": "admin", "password": "MXObCVERY0rEPyr", "port": "5432"}
+# ## Load variables from .env file or OS environment variables; create logger
+
+# # Standard modules
 # import psycopg2 # pip install psycopg2-binary
 # import pandas as pd
 # import os
 # import json
+# import sys
 # from dotenv import dotenv_values # pip install python-dotenv
+
+# # Custom modules
+# sys.path.append("./functions")
+# from logging_functions import get_logger
+
+# # Load environment variables
+# #Sample .env file: PROD_DB_CONNECTION_PARAMETERS={"db": "production_7crrss", "host": "dpg-ch3arqkimipg-a.ohio-postgres.render.com", "user": "admin", "password": "MXObCVERY0rEPyr", "port": "5432"}
 # env_vars = {
 #     **dotenv_values(r"C:/Users/trist/experimenter/api/.env"),
 #     **os.environ,  # override loaded values with environment variables
 # }
 # db_connection_parameters = json.loads(env_vars.get('PROD_DB_CONNECTION_PARAMETERS'))
 
-# ## Sample Postgresql Uses
-# def sample_postgresql_uses(db_connection_parameters):
+# # Create logger
+# if 'logger' not in locals():
+#     logger = get_logger(logger_name="api")
 
-#     conn = None
+# ## Sample Function Calls (using functions defined below)
+# # We use SQL parameters (rather than inserting user generated info into a SQL statement with f-strings) to prevent SQL injection attacks (https://www.psycopg.org/psycopg3/docs/basic/params.html)
 
-#     try:
+# # SQL statement without parameters
+# sql_params = None
+# sql_statement = "SELECT * FROM users;"
 
-#         conn = psycopg2.connect(
-#             database=db_connection_parameters['db'],
-#             host=db_connection_parameters['host'],
-#             user=db_connection_parameters['user'],
-#             password=db_connection_parameters['password'],
-#             port=db_connection_parameters['port'])
-        
-#         # Raw SQL
-#         with conn.cursor() as cursor:
-#             cursor.execute("SELECT * FROM users;")
-#             data = cursor.fetchall()
-#             col_names = [desc[0] for desc in cursor.description]
-#             df_raw_sql = pd.DataFrame(data, columns=col_names)
+# # SQL statement with parameters
+# sql_params = {'email': 'sample_user_1@gmail.com', 'first_name': 'Sample'}
+# sql_statement = "SELECT * FROM users WHERE email = %(email)s AND first_name = %(first_name)s;"
 
-#         # Postgresql Function Call (no parameters)
-#         # https://www.postgresqltutorial.com/postgresql-python/postgresql-python-call-postgresql-functions/
-#         # CREATE OR REPLACE FUNCTION get_all_users()
-#         # RETURNS setof users
-#         # LANGUAGE SQL
-#         # AS $$
-#         # SELECT * FROM users;
-#         # $$;
-#         with conn.cursor() as cursor:
-#             cursor.callproc('get_all_users')
-#             data = cursor.fetchall()
-#             col_names = [desc[0] for desc in cursor.description]
-#             df_func_no_parameters = pd.DataFrame(data, columns=col_names)
+# # SQL statement that includes an IN statement
+# # The parameter used for the IN statement must be a tuple (e.g., tuple(df['email'].unique()))
+# sql_params = {'emails': ('sample_user_1@gmail.com', 'sample_user_2')}
+# sql_statement = "SELECT * FROM users WHERE email IN %(emails)s;"
 
-#         # Postgresql Function Call (with parameters)
-#         # https://www.postgresqltutorial.com/postgresql-python/postgresql-python-call-postgresql-functions/
-#         # CREATE OR REPLACE FUNCTION get_user(email TEXT)
-#         # RETURNS setof users
-#         # LANGUAGE SQL
-#         # AS $$
-#         # SELECT * FROM users WHERE email = get_user.email;
-#         # $$;
-#         with conn.cursor() as cursor:
-#             cursor.callproc('get_user', ['tristanzucker@gmail.com'])
-#             data = cursor.fetchall()
-#             col_names = [desc[0] for desc in cursor.description]
-#             df_func_with_parameters = pd.DataFrame(data, columns=col_names)
+# # Use functions
 
-#         return [df_raw_sql, df_func_no_parameters, df_func_with_parameters]
+# db_conn = None # initialize db_conn as None so that the finally block doesn't error out if the db_conn variable doesn't exist
 
-#     # Close the connection
-#     finally:
-#         print("Closing the connection.")
-#         if conn is not None:
-#             conn.close()
+# try:
 
-# dfs = sample_postgresql_uses(db_connection_parameters)
+#     db_conn = create_db_connection(db_connection_parameters = db_connection_parameters, logger = logger)
+
+#     df = execute_sql_return_df(sql_statement = sql_statement, sql_params = sql_params, db_conn = db_conn, logger = logger)
+
+# except Exception as e:
+
+#     # Whatever error handling you want to do
+#     logger.error(e)
+
+# finally:   
+#     # Close database connection if it exists    
+#     if db_conn is not None:
+#         db_conn.close()
+
+
+# ## Sample Use of Postgresql Functions
+
+# db_conn = create_db_connection(db_connection_parameters = db_connection_parameters, logger = logger)
+
+# # Postgresql Function Call (no parameters)
+# # https://www.postgresqltutorial.com/postgresql-python/postgresql-python-call-postgresql-functions/
+# # CREATE OR REPLACE FUNCTION get_all_users()
+# # RETURNS setof users
+# # LANGUAGE SQL
+# # AS $$
+# # SELECT * FROM users;
+# # $$;
+# with db_conn.cursor() as cursor:
+#     cursor.callproc('get_all_users')
+#     data = cursor.fetchall()
+#     col_names = [desc[0] for desc in cursor.description]
+#     df_func_no_parameters = pd.DataFrame(data, columns=col_names)
+
+# # Postgresql Function Call (with parameters)
+# # https://www.postgresqltutorial.com/postgresql-python/postgresql-python-call-postgresql-functions/
+# # CREATE OR REPLACE FUNCTION get_user(email TEXT)
+# # RETURNS setof users
+# # LANGUAGE SQL
+# # AS $$
+# # SELECT * FROM users WHERE email = get_user.email;
+# # $$;
+# with db_conn.cursor() as cursor:
+#     cursor.callproc('get_user', ['sampleuser@gmail.com'])
+#     data = cursor.fetchall()
+#     col_names = [desc[0] for desc in cursor.description]
+#     df_func_with_parameters = pd.DataFrame(data, columns=col_names)
+
+# # Close the connection
+# if db_conn is not None:
+#     db_conn.close()
+
+
 
 
 ## Create Database Connection
