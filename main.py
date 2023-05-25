@@ -187,7 +187,7 @@ async def endpoint_experimenter_log(public_user_id: str):
         logger.error(traceback.format_exc()) # provide the full traceback of everything that caused the error
         honeybadger.notify(error_class=error_class, error_message=error_message)
 
-        return {"error": "True", "end_user_error_message": f"Error collecting Experimenter Log data for public_user_id: {public_user_id}"}
+        return {"status": "failure", "end_user_error_message": f"Error collecting Experimenter Log data for public_user_id: {public_user_id}"}
 
 
 # %% Submit Observation

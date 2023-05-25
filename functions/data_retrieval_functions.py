@@ -130,19 +130,20 @@ ORDER BY
 
             sleep(3) # Sleep to prevent brute force attacks
 
-            return {"error": "True", "end_user_error_message": f"Error collecting Experimenter Log data for public_user_id: {public_user_id}"}
+            return {"status": "failure", "end_user_error_message": f"Error collecting Experimenter Log data for public_user_id: {public_user_id}"}
 
         ## Initialize response dictionary
         dict_response = {}
         dict_response["public_user_id"] = public_user_id
         dict_response["first_name"] = df.first_name.get(0)
         dict_response['experiments_to_display'] = "True"
-        dict_response['error'] = "False"
+        dict_response['status'] = "success"
 
         ## CASE 2: User exists but has no assigned group
         # Test:  df has just one row with just user's info (e.g., group = None)
         # Outcome: Return early with experiments_to_display = False 
         if len(df) == 1 and df.group_name.get(0) == None:
+            
             dict_response['experiments_to_display'] = "False"
             logger.info(f"No experiments to display for public_user_id: {public_user_id}")
 
@@ -221,6 +222,7 @@ ORDER BY
         dict_response['groups'] = array_groups
 
         logger.info(f"Successfully ran get_experimenter_log_data() for public_user_id: {public_user_id}")
+
         return dict_response
     
     # Catch any exceptions as we tried to execute the function
@@ -232,7 +234,7 @@ ORDER BY
         logger.error(traceback.format_exc()) # provide the full traceback of everything that caused the error
         honeybadger.notify(error_class=error_class, error_message=error_message)
 
-        return {"error": "True", "end_user_error_message": f"Error collecting Experimenter Log data for public_user_id: {public_user_id}"}
+        return {"status": "failure", "end_user_error_message": f"Error collecting Experimenter Log data for public_user_id: {public_user_id}"}
     
     finally:
 
