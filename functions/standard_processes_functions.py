@@ -48,19 +48,19 @@ SELECT
     sga.status
 FROM 
 	sub_group_actions sga, 
-	group_assignments ga, 
 	sub_group_action_templates sgat, 
 	sub_groups sg, 
 	groups g, 
-	users u
+	users u,
+	group_assignments ga
 WHERE
 	sga.status IN ('message_to_be_scheduled', 'message_failed_to_schedule') AND -- restrict to messages that need to be scheduled
 	sga.action_datetime BETWEEN NOW() + interval '30 minutes' AND NOW() + interval '72 hours' AND -- restrict to the message needs to be sent in the next 72 hours (the furtherest in advance that SendGrid will schedule an email), but no earlier than 30 minutes from now (to allow time for the message to be scheduled and SendGrid's 15 minute cutoff for scheduled messages)
-	ga.status = 'active' AND -- restrict to messages for groups where the user is an active participant (not paused, canceled). note that we should set sub_group_actions.status = 'canceled' if the user pauses a group, so this is just a double precaution
 	sgat.id = sga.sub_group_action_template_id AND -- pull on sub_group_action_templates info (email_subject, email_body, sub_group_id)
 	sg.id = sgat.sub_group_id AND -- pull on sub_groups info (sub_group_name, group_id)
 	g.id = sg.group_id AND -- pull on groups info (group_name)
-	u.id = sga.user_id; -- pull on user info (email, first_name)"""
+	u.id = sga.user_id AND -- pull on user info (email, first_name)
+	ga.status = 'active' AND ga.user_id = u.id AND ga.group_id = g.id; -- restrict to messages for groups where the user is an active participant (not paused, canceled). note that we should set sub_group_actions.status = 'canceled' if the user pauses a group, so this is just a double precaution"""
 
         # Pull data from database
         df_messages = execute_sql_return_df(sql_statement = sql_statement, sql_params = sql_params, db_conn = db_conn, logger = logger)
